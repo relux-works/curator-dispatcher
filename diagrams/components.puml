@@ -1,0 +1,36 @@
+@startuml components
+!theme plain
+title curator-dispatcher: who calls it, what it calls (v0 command and v1 daemon share one core)
+
+actor "Person\n(curator agent-user)" as P
+node "Orchestrator agent" as O
+node "Board spawn path\n(later)" as B
+node "Session host\n(later)" as SH
+rectangle "curator-dispatcher\n(service account cur-s-dispatch)" as D {
+  component "core\n(requests, run records, grants,\ncapacity gates, journal, reconcile)" as CORE
+  component "v0 command\n(sudo -u cur-s-dispatch)" as CMD
+  component "v1 daemon\n(Unix socket, queue, events)" as DMN
+  component "per-run supervisors\n(holders)" as SUP
+}
+component "Curator\n(compose-only)" as CUR
+component "curator-host-helper\n(root, closed ops)" as H
+component "curator-host-launcher\n(root, launch.start)" as L
+component "curator-credential-broker\n(bind, lease)" as BR
+component "Key keeper\n(later: register)" as K
+node "Executor\n(agent account)" as E
+
+P --> CUR : compose plan
+P --> CMD : dispatch-op/1
+O --> DMN : dispatch/1
+B --> DMN : request_id = spawn key
+SH <--> DMN : holder backend (later)
+CMD --> CORE
+DMN --> CORE
+CORE --> H : user.create / user.retire\n(dispatcher role)
+CORE --> BR : bind / unbind\n(dispatcher principal)
+CORE ..> K : register(uid, path)
+CORE --> SUP
+SUP --> L : sudo, launch-op/1
+L --> E : drop to the agent UID, exec
+E --> BR : lease (own connection)
+@enduml

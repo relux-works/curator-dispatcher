@@ -1,0 +1,34 @@
+@startuml reconcile
+!theme plain
+title Reconciliation after a crash (on start, periodically in v1, or on request)
+
+participant "curator-dispatcher" as D
+database "journal + run records" as J
+participant "curator-host-helper\n(ledger)" as H
+participant "Broker" as B
+participant "Process table" as PT
+
+D -> J : take the lock; list runs that are not terminal
+loop each run
+  D -> H : ledger: generation present? state?
+  D -> B : binding present?
+  D -> PT : holder alive (pid + start time)? agent processes?
+  alt provisioning, no account
+    D -> J : failed {provision}
+  else account, no binding
+    D -> H : user.retire  (roll back)
+    D -> J : failed {provision}
+  else holder alive
+    D -> J : unchanged
+  else holder gone, no agent processes
+    D -> J : exit unknown → cleaning
+  else holder gone, agent processes remain
+    D -> H : user.retire (terminates the account's processes)
+    D -> J : failed {lost}
+  else cleaning unconfirmed
+    D -> B : unbind (idempotent)
+    D -> H : user.retire (idempotent by request id)
+    D -> J : done
+  end
+end
+@enduml

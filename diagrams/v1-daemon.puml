@@ -1,0 +1,30 @@
+@startuml v1-daemon
+!theme plain
+title v1: the daemon on the same core (socket, queue, events, session-host backend)
+
+participant "Orchestrator\n(agent account)" as O
+participant "curator-dispatcherd\n(cur-s-dispatch)" as D
+participant "Session host\n(later)" as SH
+participant "Supervisor\n(inside the daemon)" as S
+
+O -> D : connect; peer UID from the kernel;\ncheck server identity; hello {versions: [1]}
+O -> D : subscribe {my runs}
+O -> D : dispatch {request_id, …}
+D -> D : prepare; capacity: slots full
+D --> O : queued {handle, position}
+... a run ends, a slot frees ...
+D -> D : provision (helper, broker) as in v0
+alt session host present
+  D -> SH : start and hold executor (host uses the launcher)
+  SH --> D : events: started, exited
+else no session host
+  D -> S : supervise (sudo launcher → executor)
+end
+D --> O : event: running {run_id}
+... 
+D --> O : event: done {exit}
+note over D
+  drain: stop admitting, finish running work (operators)
+  records written by v0 are reconciled and continued
+end note
+@enduml

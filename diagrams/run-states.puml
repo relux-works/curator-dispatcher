@@ -1,0 +1,28 @@
+@startuml run-states
+!theme plain
+title Run states (run/1)
+
+[*] --> accepted
+accepted --> refused : prepare or capacity refused
+accepted --> provisioning : gates open
+accepted --> queued : v1 only: a gate is closed
+queued --> provisioning : gate opens
+queued --> cancelled : cancel or window passed
+provisioning --> starting : account + binding confirmed
+provisioning --> failed : compensation: unbind, retire
+starting --> running : executor started
+starting --> failed : compensation: stop, retire
+running --> stopping : exit, cancel or max_runtime
+stopping --> cleaning : exit recorded
+cleaning --> done : unbound + retired (or kept)
+cleaning --> cleaning : retry with backoff
+refused --> [*]
+failed --> [*]
+cancelled --> [*]
+done --> [*]
+note right of provisioning
+  every stage is journaled before its effect
+  and confirmed after it; reconciliation
+  resumes or rolls back from the journal
+end note
+@enduml
