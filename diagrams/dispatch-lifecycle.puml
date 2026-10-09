@@ -1,38 +1,45 @@
 @startuml dispatch-lifecycle
 !theme plain
-title dispatch: prepare → capacity → provision → start → running → cleanup (v0)
+title v0.2: provision an agent, then start one execution (dispatch = both + retire on exit)
 
-participant "Caller\n(curator agent-user)" as C
-participant "curator-dispatcher\n(cur-s-dispatch)" as D
+participant "Caller" as C
+participant "curator-dispatcher\n(swarma-dispatch)" as D
 participant "curator-host-helper" as H
 participant "Broker" as B
-participant "Supervisor\n(cur-s-dispatch)" as S
+participant "Supervisor" as S
 participant "curator-host-launcher" as L
-participant "Executor\n(agent account)" as E
+participant "curator-executor\n(agent account)" as E
 
-C -> D : sudo -u cur-s-dispatch …  (dispatch-request/1:\nrequest_id, profile, harness, accounts, plan, grants)
-D -> D : prepare: caller = SUDO_UID; verify caller grant\n(agent.spawn, credential.lease depth ≥ 1); quotas; plan digest
-D -> D : capacity: slots, disk, load, hold
-alt a gate is closed
-  D --> C : refused {capacity:<gate>}  (v1: queued {handle})
+== provision ==
+C -> D : provision {request_id, accounts, …, grants, auth: {key, sig}}
+D -> D : reconcile first; prepare: principal ↔ key, signature,\ncaller chain (agent.spawn, credential.lease, depth ≥ 1),\nquotas, constructible leaf; write input/1
+alt refused
+  D --> C : error {code}
+else accepted
+  D -> D : capacity claim (owned; v1 may queue)
+  D -> H : user.create {kind: agent, label, request_id: effect id}
+  H --> D : {uid, generation}
+  D -> D : sign leaf agent:<generation> = request ∩ caller ∩ own grant
+  D -> B : bind {lease chain, caller chain, intersection, effect id}
+  B --> D : binding_id
+  D --> C : agent/1 {agent_id, state: idle}
 end
-D -> D : journal: provisioning
-D -> H : sudo helper  user.create {kind: agent, label, request_id}
-H --> D : {uid, generation g-0193}
-D -> D : sign leaf grant: agent:g-0193, depth 0,\n= request ∩ caller grant ∩ own grant
-D -> B : bind {uid, generation, chain [leaf, dispatcher grant], request_id}
-B --> D : binding_id
-D -> D : journal: starting
-D -> S : start supervisor for RUN-…
-D --> C : run handle {run_id, state: starting}
-S -> L : sudo launcher  launch.start {generation, executor, cwd, plan}
-L -> E : clear groups, drop to uid 612, exec executor (plan on fd 3)
-E -> B : lease (fresh connection) → exec harness
-S -> D : journal: running {pid}
-... the run works ...
-E --> S : exit (code, signal)
-S -> D : journal: stopping {exit}
-S -> B : unbind
-S -> H : user.retire {generation, home: archive}
-S -> D : journal: done
+== start ==
+C -> D : start {request_id, agent_id, plan, digest, auth}
+D -> D : re-check authority and lifetime; claim {execution_id, epoch}
+D -> S : start supervisor
+S -> D : registered (pid, start time) — durable ack
+S -> L : sudo launcher  launch.start {generation, execution_id, epoch, executor, plan}
+L -> L : write start receipt (pid, start time, boot id)
+L -> E : drop to the agent UID, exec (plan on fd 3)
+S -> D : receipt recorded → running
+E -> E : prepare work dir in the agent home;\nprotected binding; lease; exec harness
+... running ...
+alt cancel or max_runtime
+  S -> H : exec.stop {generation, execution_id}
+  H --> S : termination receipt (no process of the execution remains)
+else exit
+  E --> S : exit status
+end
+S -> D : outcome; allocation idle (or retiring for dispatch)
 @enduml

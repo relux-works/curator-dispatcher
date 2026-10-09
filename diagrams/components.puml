@@ -1,36 +1,36 @@
 @startuml components
 !theme plain
-title curator-dispatcher: who calls it, what it calls (v0 command and v1 daemon share one core)
+title curator-dispatcher v0.2: callers, core, privileged operations (v0 command and v1 daemon share one core)
 
 actor "Person\n(curator agent-user)" as P
-node "Orchestrator agent" as O
-node "Board spawn path\n(later)" as B
-node "Session host\n(later)" as SH
-rectangle "curator-dispatcher\n(service account cur-s-dispatch)" as D {
-  component "core\n(requests, run records, grants,\ncapacity gates, journal, reconcile)" as CORE
-  component "v0 command\n(sudo -u cur-s-dispatch)" as CMD
-  component "v1 daemon\n(Unix socket, queue, events)" as DMN
-  component "per-run supervisors\n(holders)" as SUP
+node "Orchestrator agent\n(registered caller key)" as O
+node "Board spawn path\n(later, via adapter)" as B
+node "Session host\n(later, launch tickets)" as SH
+rectangle "curator-dispatcher\n(service account swarma-dispatch)" as D {
+  component "core\n(inputs, allocations agent/1, executions run/1,\neffect table, claims, journal, reconcile)" as CORE
+  component "v0 command\n(sudo -u swarma-dispatch, signed request)" as CMD
+  component "v1 daemon\n(socket, queue, events)" as DMN
+  component "supervisors\n(one per execution)" as SUP
+  component "sweep timer\n(lifetimes, reconcile)" as SW
 }
 component "Curator\n(compose-only)" as CUR
-component "curator-host-helper\n(root, closed ops)" as H
-component "curator-host-launcher\n(root, launch.start)" as L
-component "curator-credential-broker\n(bind, lease)" as BR
-component "Key keeper\n(later: register)" as K
-node "Executor\n(agent account)" as E
+component "curator-host-helper\n(user.create, user.retire, exec.stop)" as H
+component "curator-host-launcher\n(launch.start → start receipt)" as L
+component "curator-credential-broker\n(bind with caller dependency, lease)" as BR
+node "curator-executor\n(agent account)" as E
 
 P --> CUR : compose plan
-P --> CMD : dispatch-op/1
-O --> DMN : dispatch/1
-B --> DMN : request_id = spawn key
-SH <--> DMN : holder backend (later)
+P --> CMD : dispatch-op/1 + signature
+O --> DMN : dispatch/1 + signature
+B ..> DMN : adapter (later)
+SH ..> DMN : holder backend (later)
 CMD --> CORE
 DMN --> CORE
-CORE --> H : user.create / user.retire\n(dispatcher role)
-CORE --> BR : bind / unbind\n(dispatcher principal)
-CORE ..> K : register(uid, path)
+SW --> CORE
+CORE --> H : create / retire / stop\n(own generations only)
+CORE --> BR : bind / unbind\n(lease chain + caller chain)
 CORE --> SUP
-SUP --> L : sudo, launch-op/1
-L --> E : drop to the agent UID, exec
-E --> BR : lease (own connection)
+SUP --> L : launch.start {generation, execution_id, epoch}
+L --> E : receipt, drop to agent UID, exec
+E --> BR : lease (own connection); broker re-checks\nthe caller dependency every time
 @enduml

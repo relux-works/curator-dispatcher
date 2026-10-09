@@ -1,28 +1,38 @@
 @startuml run-states
 !theme plain
-title Run states (run/1)
+title States: allocations (agent/1) and executions (run/1)
 
-[*] --> accepted
-accepted --> refused : prepare or capacity refused
-accepted --> provisioning : gates open
-accepted --> queued : v1 only: a gate is closed
-queued --> provisioning : gate opens
-queued --> cancelled : cancel or window passed
-provisioning --> starting : account + binding confirmed
-provisioning --> failed : compensation: unbind, retire
-starting --> running : executor started
-starting --> failed : compensation: stop, retire
-running --> stopping : exit, cancel or max_runtime
-stopping --> cleaning : exit recorded
-cleaning --> done : unbound + retired (or kept)
-cleaning --> cleaning : retry with backoff
-refused --> [*]
-failed --> [*]
-cancelled --> [*]
-done --> [*]
-note right of provisioning
-  every stage is journaled before its effect
-  and confirmed after it; reconciliation
-  resumes or rolls back from the journal
+state "agent/1" as A {
+  [*] --> provisioning
+  provisioning --> idle : created + bound
+  provisioning --> a_retiring : failure
+  idle --> running : execution claimed
+  running --> idle : execution finished (kept agent)
+  running --> a_retiring : dispatch finished / expired
+  idle --> a_retiring : retire / lifetime ended
+  state "retiring" as a_retiring
+  a_retiring --> removed : unbind + retire confirmed
+  a_retiring --> a_failed : (only for a failed provision,\nafter cleanup is confirmed)
+  state "failed" as a_failed
+}
+
+state "run/1" as R {
+  [*] --> accepted
+  accepted --> queued : v1, gate closed
+  queued --> starting : gate opens, authority re-checked
+  queued --> cancelled : cancel / window passed
+  accepted --> starting : claim taken
+  starting --> running : start receipt recorded
+  starting --> stopping : cancel / launch failure
+  running --> stopping : exit / cancel / max_runtime
+  stopping --> cleaning : termination receipt or exit recorded
+  cleaning --> done : obligations confirmed
+  cleaning --> cleaning : effect unknown → retry
+  done --> [*]
+  cancelled --> [*]
+}
+note bottom of R
+  terminal outcome is recorded only after cleanup is confirmed:
+  exit | failed | cancelled | expired | lost
 end note
 @enduml

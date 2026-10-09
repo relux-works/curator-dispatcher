@@ -1,34 +1,28 @@
 @startuml reconcile
 !theme plain
-title Reconciliation after a crash (on start, periodically in v1, or on request)
+title Reconciliation: observations are known present, known absent, unknown or contradictory
 
 participant "curator-dispatcher" as D
-database "journal + run records" as J
-participant "curator-host-helper\n(ledger)" as H
+database "journal + effect table + records" as J
+participant "Helper ledger\n+ start receipts" as H
 participant "Broker" as B
-participant "Process table" as PT
 
-D -> J : take the lock; list runs that are not terminal
-loop each run
-  D -> H : ledger: generation present? state?
-  D -> B : binding present?
-  D -> PT : holder alive (pid + start time)? agent processes?
-  alt provisioning, no account
-    D -> J : failed {provision}
-  else account, no binding
-    D -> H : user.retire  (roll back)
-    D -> J : failed {provision}
-  else holder alive
-    D -> J : unchanged
-  else holder gone, no agent processes
-    D -> J : exit unknown → cleaning
-  else holder gone, agent processes remain
-    D -> H : user.retire (terminates the account's processes)
-    D -> J : failed {lost}
-  else cleaning unconfirmed
-    D -> B : unbind (idempotent)
-    D -> H : user.retire (idempotent by request id)
-    D -> J : done
+D -> J : take the lock; replay the journal; list non-terminal records
+loop each record, state by state
+  D -> H : observe generation, claim, receipt (by effect id)
+  D -> B : observe binding (by effect id)
+  alt any observation unknown or contradictory
+    D -> J : leave the record; retry later (never relaunch, never declare clean)
+  else provisioning, account present, bind unknown→absent
+    D -> B : bind if the request is still valid, else retire
+  else claim "claimed", no supervisor registration
+    D -> J : claim absent (no launch will happen)
+  else started, supervisor known absent
+    D -> H : exec.stop (same effect id) → outcome lost
+  else retiring / cleaning with pending effects
+    D -> B : unbind (same effect id)
+    D -> H : user.retire (same effect id)
+    D -> J : terminal only when both are confirmed
   end
 end
 @enduml

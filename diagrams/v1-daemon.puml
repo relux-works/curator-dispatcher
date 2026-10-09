@@ -1,30 +1,30 @@
 @startuml v1-daemon
 !theme plain
-title v1: the daemon on the same core (socket, queue, events, session-host backend)
+title v1: the daemon on the same core; the session-host backend needs launch tickets and host-owned fences
 
 participant "Orchestrator\n(agent account)" as O
-participant "curator-dispatcherd\n(cur-s-dispatch)" as D
+participant "curator-dispatcherd\n(swarma-dispatch)" as D
 participant "Session host\n(later)" as SH
-participant "Supervisor\n(inside the daemon)" as S
+participant "curator-host-launcher" as L
 
-O -> D : connect; peer UID from the kernel;\ncheck server identity; hello {versions: [1]}
-O -> D : subscribe {my runs}
-O -> D : dispatch {request_id, …}
-D -> D : prepare; capacity: slots full
-D --> O : queued {handle, position}
-... a run ends, a slot frees ...
-D -> D : provision (helper, broker) as in v0
-alt session host present
-  D -> SH : start and hold executor (host uses the launcher)
-  SH --> D : events: started, exited
-else no session host
-  D -> S : supervise (sudo launcher → executor)
+O -> D : connect; peer UID; server identity; hello
+O -> D : dispatch {…, auth: {key, sig}}
+D -> D : prepare; capacity: temporary closure
+D --> O : queued {handle} (fair, bounded, durable)
+... gate opens ...
+D -> D : re-check authority and every gate; provision
+alt session host backend activated
+  D -> SH : start {logical_session_id, execution_id, epoch, op_id, ticket}
+  SH -> SH : check fence + epoch atomically with the effect
+  SH -> L : launch.start with the dispatcher's ticket (host role)
+  SH --> D : events: started, exited (receipts)
+else default
+  D -> D : in-daemon supervisor (as in v0)
 end
-D --> O : event: running {run_id}
-... 
-D --> O : event: done {exit}
+D --> O : event: running / done {outcome}
 note over D
-  drain: stop admitting, finish running work (operators)
-  records written by v0 are reconciled and continued
+  activation from v0 is an operator transaction:
+  stop admission → exclusive state → migrate → drain v0 supervisors
+  → reconcile → mode = daemon → ready
 end note
 @enduml
