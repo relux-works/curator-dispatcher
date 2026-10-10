@@ -1,36 +1,50 @@
 @startuml components
 !theme plain
-title swarma-dispatcher v0.2: callers, core, privileged operations (v0 command and v1 daemon share one core)
+title swarma-dispatcher v0.3: callers, core, privileged operations (v0 command and v1 daemon share one core)
 
 actor "Person\n(curator agent-user)" as P
 node "Orchestrator agent\n(registered caller key)" as O
 node "Board spawn path\n(later, via adapter)" as B
-node "Session host\n(later, launch tickets)" as SH
+node "swarma-session-host\n(SH2+ service: metadata, fences)" as SH
 rectangle "swarma-dispatcher\n(service account swarma-dispatcher)" as D {
   component "core\n(inputs, allocations agent/1, executions run/1,\neffect table, claims, journal, reconcile)" as CORE
   component "v0 command\n(sudo -u swarma-dispatcher, signed request)" as CMD
   component "v1 daemon\n(socket, queue, events)" as DMN
   component "supervisors\n(one per execution)" as SUP
-  component "sweep timer\n(lifetimes, reconcile)" as SW
+  component "v0 internal service-only sweep timer\n(lifetimes, reconcile; v1 daemon internal)" as SW
 }
-component "Curator\n(compose-only)" as CUR
+component "Curator launch caller\n(compose plan)" as CUR
 component "swarma-user-manager\n(user.create, user.retire, exec.stop)" as H
 component "swarma-user-launcher\n(launch.start → start receipt)" as L
 component "swarma-credential-broker\n(bind with caller dependency, lease)" as BR
-node "curator-run\n(agent account)" as E
+node "curator-run narrow exec mode\n(agent account; first broker consumer)" as E
+node "swarma-session-runner\n(SH2+ agent account: PTY/app-server, renewal)" as SR
 
 P --> CUR : compose plan
-P --> CMD : dispatch-op/1 + signature
+CUR --> CMD : caller-composed plan; dispatch-op/1\nsigned domain: swarma-dispatcher request/1
 O --> DMN : dispatch/1 + signature
 B ..> DMN : adapter (later)
-SH ..> DMN : holder backend (later)
+SH ..> DMN : launch request (no embedded broker client; later)
+SH ..> SR : session metadata / input (later)
+SR ..> BR : own broker connection (qualified later integration)
 CMD --> CORE
 DMN --> CORE
 SW --> CORE
-CORE --> H : create / retire / stop\n(own generations only)
-CORE --> BR : bind / unbind\n(lease chain + caller chain)
+CORE --> H : no-argument sudo; closed request on stdin\ncreate / retire / stop (own generations only; distinct effect IDs)
+CORE --> BR : bind / unbind (distinct effect IDs)\nlease chain + caller chain
 CORE --> SUP
-SUP --> L : launch.start {generation, execution_id, epoch}
-L --> E : receipt, drop to agent UID, exec
+SUP --> L : no-argument sudo; launch.start on stdin\n{request_id: E-launch, generation, execution_id, epoch}
+L --> E : receipt while root; clear groups; set GID/UID; exec\n(immutable plan FD3; own broker connection)
 E --> BR : lease (own connection); broker re-checks\nthe caller dependency every time
+note bottom of CORE
+  Root (caller principal, request_id) is correlation;
+  E-create, E-bind and E-launch are distinct receiver keys (§4.5).
+  Capacity: v0 refuses; v1 queues. Quota/authority: always refuse.
+end note
+note right of E
+  Caller composes; executor verifies and executes only.
+  No profile resolution; no network except broker.
+  Versioned intake/Decision 0021 amendment and
+  credential qualification required before activation.
+end note
 @enduml
