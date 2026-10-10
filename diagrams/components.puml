@@ -1,23 +1,23 @@
 @startuml components
 !theme plain
-title curator-dispatcher v0.2: callers, core, privileged operations (v0 command and v1 daemon share one core)
+title swarma-dispatcher v0.2: callers, core, privileged operations (v0 command and v1 daemon share one core)
 
 actor "Person\n(curator agent-user)" as P
 node "Orchestrator agent\n(registered caller key)" as O
 node "Board spawn path\n(later, via adapter)" as B
 node "Session host\n(later, launch tickets)" as SH
-rectangle "curator-dispatcher\n(service account swarma-dispatch)" as D {
+rectangle "swarma-dispatcher\n(service account swarma-dispatcher)" as D {
   component "core\n(inputs, allocations agent/1, executions run/1,\neffect table, claims, journal, reconcile)" as CORE
-  component "v0 command\n(sudo -u swarma-dispatch, signed request)" as CMD
+  component "v0 command\n(sudo -u swarma-dispatcher, signed request)" as CMD
   component "v1 daemon\n(socket, queue, events)" as DMN
   component "supervisors\n(one per execution)" as SUP
   component "sweep timer\n(lifetimes, reconcile)" as SW
 }
 component "Curator\n(compose-only)" as CUR
-component "curator-host-helper\n(user.create, user.retire, exec.stop)" as H
-component "curator-host-launcher\n(launch.start → start receipt)" as L
-component "curator-credential-broker\n(bind with caller dependency, lease)" as BR
-node "curator-agent-runtime run\n(agent account)" as E
+component "swarma-user-manager\n(user.create, user.retire, exec.stop)" as H
+component "swarma-user-launcher\n(launch.start → start receipt)" as L
+component "swarma-credential-broker\n(bind with caller dependency, lease)" as BR
+node "curator-run\n(agent account)" as E
 
 P --> CUR : compose plan
 P --> CMD : dispatch-op/1 + signature

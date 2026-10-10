@@ -1,8 +1,8 @@
-# curator-dispatcher: specification
+# swarma-dispatcher: specification
 
 - **Status:** draft v0.2 (2026-10-10). Nothing is implemented.
 - **Normative language:** MUST, MUST NOT, SHOULD and MAY are used as in RFC 2119.
-- **Companions:** [curator-host-helper](https://github.com/relux-works/curator-host-helper) (agent accounts, the launcher, the stop operation), [curator-credential-broker](https://github.com/relux-works/curator-credential-broker) (bindings, caller-authorization dependencies, leases), curator-spec CIP-0011 (the Curator side), the platform architecture §7.1 (launch dispatcher), §5.1 (launch contract), §5.3 (fences and restarts), §7.2 (key keeper), §7.5 (isolation).
+- **Companions:** [swarma-user-manager](https://github.com/relux-works/swarma-user-manager) (agent accounts, the launcher, the stop operation), [swarma-credential-broker](https://github.com/relux-works/swarma-credential-broker) (bindings, caller-authorization dependencies, leases), curator-spec CIP-0011 (the Curator side), the platform architecture §7.1 (launch dispatcher), §5.1 (launch contract), §5.3 (fences and restarts), §7.2 (key keeper), §7.5 (isolation).
 
 ### Revision 0.2
 
@@ -24,7 +24,7 @@ The dispatcher is where a launch becomes an execution. It takes from today's `ta
 
 1. it accepts a request from a person, an orchestrator, the board or a tool, authenticates the caller by its OS account and its request signature, and checks the caller's grant;
 2. it checks and reserves this machine's capacity;
-3. it provisions an agent: an OS account through curator-host-helper, a binding in curator-credential-broker with a leaf grant narrowed for the agent and the caller's authorization recorded as a dependency;
+3. it provisions an agent: an OS account through swarma-user-manager, a binding in swarma-credential-broker with a leaf grant narrowed for the agent and the caller's authorization recorded as a dependency;
 4. it starts the agent's executor under that account through the helper's launcher, tracks the execution, and stops it through the helper when asked;
 5. it cleans up per policy, and after any crash reconciles its records with the helper, the broker and the process evidence before accepting new work.
 
@@ -41,19 +41,19 @@ Without a dispatcher, Curator can still launch directly, without accounting; wit
 
 | Name | Meaning |
 |---|---|
-| dispatcher | this component, under its service account `swarma-dispatch` (names follow the platform root `/opt/swarma`) |
+| dispatcher | this component, under its service account `swarma-dispatcher` (names follow the platform root `/opt/swarma`) |
 | caller | the principal that sends a request: a person's account, an orchestrator agent, the board's runner, the session host |
 | agent allocation | one provisioned agent account generation and what the dispatcher keeps about it (`agent/1`) |
 | execution | one start of one plan under one allocation (`run/1`) |
-| host launcher | `curator-host-launcher`, the privileged transition into an agent account (helper repository) |
-| executor | the launch step that runs under the agent account, prepares the working directory, reads the plan, leases its credential and execs the harness; performed by `curator-agent-runtime run` (Curator's agent-side program, whose `hold` mode is the session host's holder in SH2+) |
+| host launcher | `swarma-user-launcher`, the privileged transition into an agent account (helper repository) |
+| executor | the launch step that runs under the agent account, prepares the working directory, reads the plan, leases its credential and execs the harness; performed by `curator-run`, Curator's launcher started under the agent account; long-lived sessions use `swarma-session-runner` instead (SH2+) |
 | supervisor | the dispatcher-owned process that holds one execution (v0 detached, v1 inside the daemon) |
 
 ## 2. Versions
 
 | Version | Shape | Adds |
 |---|---|---|
-| v0 | a command run under `swarma-dispatch` through `sudo -u`, one request per invocation; detached supervisors; a periodic sweep | the core: requests, allocations, executions, authority, capacity claims, provisioning, start, stop, cleanup, reconciliation |
+| v0 | a command run under `swarma-dispatcher` through `sudo -u`, one request per invocation; detached supervisors; a periodic sweep | the core: requests, allocations, executions, authority, capacity claims, provisioning, start, stop, cleanup, reconciliation |
 | v1 | a daemon on the same core, a Unix socket with peer authentication | queue with handles, events, long waits, drain; then the session-host backend and key keeper registration, each behind its activation gate (§14) |
 
 The installation mode (`command` or `daemon`) is recorded in the dispatcher's configuration and in its state; it changes only through the activation transaction of §11.
@@ -62,18 +62,18 @@ The installation mode (`command` or `daemon`) is recorded in the dispatcher's co
 
 ### 3.1 The dispatcher's account
 
-The dispatcher runs as the unprivileged service account `swarma-dispatch`, created by the helper for the installer. Only this account is a **dispatcher** in the helper policy and in the broker, so the root transitions and bindings are reachable only through it. The dispatcher is a trusted principal for its scope: a compromised dispatcher can sign leaves within its own grant and administer the agents it created, but cannot exceed the broker-verified root bounds or obtain a general root shell from the helper's closed operations.
+The dispatcher runs as the unprivileged service account `swarma-dispatcher`, created by the helper for the installer. Only this account is a **dispatcher** in the helper policy and in the broker, so the root transitions and bindings are reachable only through it. The dispatcher is a trusted principal for its scope: a compromised dispatcher can sign leaves within its own grant and administer the agents it created, but cannot exceed the broker-verified root bounds or obtain a general root shell from the helper's closed operations.
 
 ### 3.2 Callers
 
-- **v0:** a sudoers rule lets each configured caller run the dispatcher command as `swarma-dispatch` with no arguments (`<caller> ALL=(swarma-dispatch) NOPASSWD: /opt/swarma/libexec/curator-dispatcher ""`). The command refuses unless: it runs as `swarma-dispatch` (`not_dispatcher_account`); `SUDO_UID` is present and decimal (`not_invoked_by_sudo`); its executable and every parent directory are root-owned and not writable by others; no argument is given; it reads its state root from its configuration, never from an inherited `HOME`; the environment and descriptors are reset; and the request is read within bounded size and time (§10) **before** the state lock is taken.
+- **v0:** a sudoers rule lets each configured caller run the dispatcher command as `swarma-dispatcher` with no arguments (`<caller> ALL=(swarma-dispatcher) NOPASSWD: /opt/swarma/libexec/swarma-dispatcher ""`). The command refuses unless: it runs as `swarma-dispatcher` (`not_dispatcher_account`); `SUDO_UID` is present and decimal (`not_invoked_by_sudo`); its executable and every parent directory are root-owned and not writable by others; no argument is given; it reads its state root from its configuration, never from an inherited `HOME`; the environment and descriptors are reset; and the request is read within bounded size and time (§10) **before** the state lock is taken.
 - **v1:** the caller is the kernel-reported peer UID on the socket, with the connection rules of broker §4.1.
 - Principals follow broker §4.2: managed callers by `(uid, generation)` with the helper ledger showing the generation `active` (re-checked for every operation, every queued start and every reconciliation); unmanaged callers pinned by UID and directory identity. An unreadable or invalid ledger refuses; a recycled UID never inherits old allocations or executions.
 
 ### 3.3 Caller keys and request signatures
 
 - The dispatcher's configuration (owned by its account, written by the operator through the installer) maps each **principal** to its **caller keys** (Ed25519). An orchestrator agent's key is registered when the dispatcher provisions it with the `orchestrator` capability (§5.2): the executor generates the key in the agent's home on first start and registers the public key with the dispatcher over an authenticated call from that agent's UID; the dispatcher records it against the allocation's `(uid, generation)`.
-- Every mutating request carries `auth: { key, sig }`: an Ed25519 signature by a caller key over the domain tag `curator-dispatcher request/1`, a newline and the CCJ-1 bytes of the request without `auth`. The key must be associated with the authenticated principal (`caller_key_not_associated`), and the leaf of the caller's grant chain must have that key as its subject (`grant_subject_mismatch`).
+- Every mutating request carries `auth: { key, sig }`: an Ed25519 signature by a caller key over the domain tag `swarma-dispatcher request/1`, a newline and the CCJ-1 bytes of the request without `auth`. The key must be associated with the authenticated principal (`caller_key_not_associated`), and the leaf of the caller's grant chain must have that key as its subject (`grant_subject_mismatch`).
 - A valid chain presented without the matching principal and signature is refused; a copied chain is useless to another caller.
 
 ### 3.4 Grants and their constructible shapes
@@ -104,7 +104,7 @@ The per-caller execution limit matches the host's existing rule of two runs per 
 
 ### 4.1 State directory
 
-The state lives under `/opt/swarma/services/swarma-dispatch/state` (mode 0700): the immutable inputs, the record files, the effect table, the journal, the index, the claims, the dispatcher key and the lock. Every state change and every reconciliation holds the lock. Record files are replaced atomically (temporary file, flush, rename, directory flush); the journal is appended and flushed before any external effect; on start-up the journal is replayed over the record files, so a crash between the two leaves no ambiguity.
+The state lives under `/opt/swarma/services/swarma-dispatcher/state` (mode 0700): the immutable inputs, the record files, the effect table, the journal, the index, the claims, the dispatcher key and the lock. Every state change and every reconciliation holds the lock. Record files are replaced atomically (temporary file, flush, rename, directory flush); the journal is appended and flushed before any external effect; on start-up the journal is replayed over the record files, so a crash between the two leaves no ambiguity.
 
 ### 4.2 Immutable input `input/1`
 
@@ -144,7 +144,7 @@ Before a request is accepted, its canonical bytes, the decoded plan bytes, the f
 
 ### 4.5 Effect ids and the effect table
 
-Every downstream call has an **effect id**: the first 32 hex characters of SHA-256 over the domain tag `curator-dispatcher effect/1` and the CCJ-1 bytes of `{ caller principal, request_id, record id, component, operation, attempt }`. Its inputs are journaled before the call; a retry of the same effect reuses its id; create, bind, launch, stop, unbind and retire use distinct ids. The effect table records, per effect: id, component, operation, intent time, result (`ok` with the returned identity, `refused` with its code, or `unknown`), and the last observation. Two callers using the same `request_id` never collide downstream.
+Every downstream call has an **effect id**: the first 32 hex characters of SHA-256 over the domain tag `swarma-dispatcher effect/1` and the CCJ-1 bytes of `{ caller principal, request_id, record id, component, operation, attempt }`. Its inputs are journaled before the call; a retry of the same effect reuses its id; create, bind, launch, stop, unbind and retire use distinct ids. The effect table records, per effect: id, component, operation, intent time, result (`ok` with the returned identity, `refused` with its code, or `unknown`), and the last observation. Two callers using the same `request_id` never collide downstream.
 
 ### 4.6 Observations
 
@@ -186,7 +186,7 @@ A cancel is serialised with the claim: before the launch, it marks the claim `ab
 
 ## 6. Holding and stopping
 
-- **Supervisor (v0 and v1).** A per-execution process under `swarma-dispatch`: new session, no controlling terminal, caller descriptors closed, bounded private logs of the executor's output in the dispatcher state, durable registration before the launch, and the start and termination receipts recorded. In v1 the daemon runs the supervisors itself.
+- **Supervisor (v0 and v1).** A per-execution process under `swarma-dispatcher`: new session, no controlling terminal, caller descriptors closed, bounded private logs of the executor's output in the dispatcher state, durable registration before the launch, and the start and termination receipts recorded. In v1 the daemon runs the supervisors itself.
 - **Stop.** Signals are not relayed through sudo (sudo cannot forward SIGKILL and may not stay as a parent). The only stop is the helper's `exec.stop`, authorised for the dispatcher's own generations; ephemeral executions may also end through `user.retire`, which stops the account's processes before removal. The qualification distinguishes: the caller's command killed, its terminal closed, sudo killed, an executor that ignores SIGTERM, and descendants that escaped the session.
 
 ## 7. Reconciliation and the sweep
@@ -208,7 +208,7 @@ Runs at every v0 invocation before the request is read into state, at v1 daemon 
 
 ### 7.2 The sweep
 
-A timer (launchd job or systemd timer as `swarma-dispatch`) runs `curator-dispatcher sweep` every minute in v0: reconciliation, lifetimes, claim expiry and log rotation. In v1 the daemon does the same internally. While neither runs, lifetimes are not enforced; the status of every allocation says so.
+A timer (launchd job or systemd timer as `swarma-dispatcher`) runs `swarma-dispatcher sweep` every minute in v0: reconciliation, lifetimes, claim expiry and log rotation. In v1 the daemon does the same internally. While neither runs, lifetimes are not enforced; the status of every allocation says so.
 
 ## 8. Operations, results and authorisation
 
@@ -237,7 +237,7 @@ A discriminated union on `op`; every operation has a closed set of members, and 
 
 ### 8.3 v1 socket `dispatch/1`
 
-The daemon `curator-dispatcherd` runs as `swarma-dispatch` and listens in `/opt/swarma/run/dispatcher/`. It uses the framing and connection rules of broker §4.1 and §13 with one declared difference: frames up to 128 KiB (§10). Clients use the transport the installation mode names; an authentication, permission, version or malformed-response failure never makes a client fall back to the other transport. After an ambiguous reply the client repeats the same request with the same `request_id` and signature.
+The daemon `swarma-dispatcherd` runs as `swarma-dispatcher` and listens in `/opt/swarma/run/dispatcher/`. It uses the framing and connection rules of broker §4.1 and §13 with one declared difference: frames up to 128 KiB (§10). Clients use the transport the installation mode names; an authentication, permission, version or malformed-response failure never makes a client fall back to the other transport. After an ambiguous reply the client repeats the same request with the same `request_id` and signature.
 
 ### 8.4 Relation to the platform launch contract
 
@@ -264,7 +264,7 @@ A request whose plan exceeds the smallest bound on its path is refused at `prepa
 
 ## 11. Installation and activation
 
-- **Installation.** The installer creates `swarma-dispatch` with the helper; places the binary in `/opt/swarma/libexec/`; writes the sudoers rules (callers to `swarma-dispatch`; `swarma-dispatch` to the helper and the launcher, each with no arguments); registers `swarma-dispatch` in the helper policy and the broker configuration; generates the dispatcher key; asks the operator to issue the dispatcher's grant in the constructible shape (§3.4); installs the sweep timer; records the installation mode `command`.
+- **Installation.** The installer creates `swarma-dispatcher` with the helper; places the binary in `/opt/swarma/libexec/`; writes the sudoers rules (callers to `swarma-dispatcher`; `swarma-dispatcher` to the helper and the launcher, each with no arguments); registers `swarma-dispatcher` in the helper policy and the broker configuration; generates the dispatcher key; asks the operator to issue the dispatcher's grant in the constructible shape (§3.4); installs the sweep timer; records the installation mode `command`.
 - **Activation of v1** is an operator transaction: stop admission; take exclusive ownership of the state; check and migrate the state version; let v0 supervisors finish their executions (the first activation drains, it does not adopt live supervisors); reconcile; switch the recorded mode to `daemon` and publish readiness. Every v0 mutation and every v0 supervisor checks the recorded mode and backend generation and stops when they change. Rollback reverses the same steps; a v0 binary refuses state written by a newer version.
 
 ## 12. Session-host backend (later; activation gate)

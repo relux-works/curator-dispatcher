@@ -3,9 +3,9 @@
 title v1: the daemon on the same core; the session-host backend needs launch tickets and host-owned fences
 
 participant "Orchestrator\n(agent account)" as O
-participant "curator-dispatcherd\n(swarma-dispatch)" as D
+participant "swarma-dispatcherd\n(swarma-dispatcher)" as D
 participant "Session host\n(later)" as SH
-participant "curator-host-launcher" as L
+participant "swarma-user-launcher" as L
 
 O -> D : connect; peer UID; server identity; hello
 O -> D : dispatch {…, auth: {key, sig}}

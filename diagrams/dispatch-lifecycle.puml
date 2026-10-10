@@ -3,12 +3,12 @@
 title v0.2: provision an agent, then start one execution (dispatch = both + retire on exit)
 
 participant "Caller" as C
-participant "curator-dispatcher\n(swarma-dispatch)" as D
-participant "curator-host-helper" as H
+participant "swarma-dispatcher\n(swarma-dispatcher)" as D
+participant "swarma-user-manager" as H
 participant "Broker" as B
 participant "Supervisor" as S
-participant "curator-host-launcher" as L
-participant "curator-agent-runtime run\n(agent account)" as E
+participant "swarma-user-launcher" as L
+participant "curator-run\n(agent account)" as E
 
 == provision ==
 C -> D : provision {request_id, accounts, …, grants, auth: {key, sig}}

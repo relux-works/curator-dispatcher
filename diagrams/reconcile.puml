@@ -2,7 +2,7 @@
 !theme plain
 title Reconciliation: observations are known present, known absent, unknown or contradictory
 
-participant "curator-dispatcher" as D
+participant "swarma-dispatcher" as D
 database "journal + effect table + records" as J
 participant "Helper ledger\n+ start receipts" as H
 participant "Broker" as B
