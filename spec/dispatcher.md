@@ -46,7 +46,7 @@ Without a dispatcher, Curator can still launch directly, without accounting; wit
 | agent allocation | one provisioned agent account generation and what the dispatcher keeps about it (`agent/1`) |
 | execution | one start of one plan under one allocation (`run/1`) |
 | host launcher | `curator-host-launcher`, the privileged transition into an agent account (helper repository) |
-| executor | `curator-executor`, the approved process that runs under the agent account, prepares the working directory, reads the plan, leases its credential and execs the harness |
+| executor | the launch step that runs under the agent account, prepares the working directory, reads the plan, leases its credential and execs the harness; performed by `curator-agent-runtime run` (Curator's agent-side program, whose `hold` mode is the session host's holder in SH2+) |
 | supervisor | the dispatcher-owned process that holds one execution (v0 detached, v1 inside the daemon) |
 
 ## 2. Versions

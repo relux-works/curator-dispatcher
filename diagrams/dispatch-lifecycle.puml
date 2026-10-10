@@ -8,7 +8,7 @@ participant "curator-host-helper" as H
 participant "Broker" as B
 participant "Supervisor" as S
 participant "curator-host-launcher" as L
-participant "curator-executor\n(agent account)" as E
+participant "curator-agent-runtime run\n(agent account)" as E
 
 == provision ==
 C -> D : provision {request_id, accounts, …, grants, auth: {key, sig}}

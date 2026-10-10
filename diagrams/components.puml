@@ -17,7 +17,7 @@ component "Curator\n(compose-only)" as CUR
 component "curator-host-helper\n(user.create, user.retire, exec.stop)" as H
 component "curator-host-launcher\n(launch.start → start receipt)" as L
 component "curator-credential-broker\n(bind with caller dependency, lease)" as BR
-node "curator-executor\n(agent account)" as E
+node "curator-agent-runtime run\n(agent account)" as E
 
 P --> CUR : compose plan
 P --> CMD : dispatch-op/1 + signature
