@@ -89,6 +89,17 @@ The dispatcher runs as the unprivileged service account `swarma-dispatch`, creat
 
 Configuration sets, per caller and in total: live allocations, concurrent executions, the maximum allocation lifetime and the maximum execution runtime. Requests beyond them are refused (`quota_exceeded`) — a permanent refusal, never a queueable condition.
 
+Defaults (owner decision 2026-10-10), all configurable:
+
+| Limit | Per caller | Per node |
+|---|---:|---:|
+| concurrent executions | 2 | 6 |
+| live allocations | 4 | 16 |
+| allocation lifetime | default 24 h, maximum 7 days | — |
+| execution runtime | default 4 h, maximum 12 h | — |
+
+The per-caller execution limit matches the host's existing rule of two runs per orchestrator.
+
 ## 4. Records and state
 
 ### 4.1 State directory
@@ -230,7 +241,7 @@ The daemon `curator-dispatcherd` runs as `swarma-dispatch` and listens in `/opt/
 
 ### 8.4 Relation to the platform launch contract
 
-The dispatcher implements a **local headless subset** of `dispatch(LaunchRequest)` (architecture §7.1, §5.1): it starts already composed plans; it records the opaque provenance (`board_ref`, `parent`) whole; it refuses interactive transport, native resume, seeded continuity and remote targets (`unsupported_combination`). A versioned LCH adapter, owned with the launch client, composes plans, compares pins and maps `LaunchRequest` onto these operations; until it exists, nothing claims full LCH conformance.
+The dispatcher implements a **local headless subset** of `dispatch(LaunchRequest)` (architecture §7.1, §5.1): it starts already composed plans; it records the opaque provenance (`board_ref`, `parent`) whole; it refuses interactive transport, native resume, seeded continuity and remote targets (`unsupported_combination`). Interactive executions under agent accounts arrive with the session host's platform phase (its backend gate, §12), not in this dispatcher (owner decision 2026-10-10); until then, goal updates to spawned agents keep flowing through the board and today's session manager. A versioned LCH adapter, owned with the launch client, composes plans, compares pins and maps `LaunchRequest` onto these operations; until it exists, nothing claims full LCH conformance.
 
 ## 9. Capacity
 
