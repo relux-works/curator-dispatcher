@@ -1,50 +1,67 @@
 @startuml components
-!theme plain
-title swarma-dispatcher v0.3: callers, core, privileged operations (v0 command and v1 daemon share one core)
-
-actor "Person\n(curator agent-user)" as P
-node "Orchestrator agent\n(registered caller key)" as O
-node "Board spawn path\n(later, via adapter)" as B
-node "swarma-session-host\n(SH2+ service: metadata, fences)" as SH
-rectangle "swarma-dispatcher\n(service account swarma-dispatcher)" as D {
-  component "core\n(inputs, allocations agent/1, executions run/1,\neffect table, claims, journal, reconcile)" as CORE
-  component "v0 command\n(sudo -u swarma-dispatcher, signed request)" as CMD
-  component "v1 daemon\n(socket, queue, events)" as DMN
-  component "supervisors\n(one per execution)" as SUP
-  component "v0 internal service-only sweep timer\n(lifetimes, reconcile; v1 daemon internal)" as SW
+skinparam componentStyle rectangle
+title M-DP1: dispatcher v0 command / v1 daemon (draft; not implemented)
+actor "Caller process\n(person, orchestrator or optional board adapter)\ncaller UID; principal + registered key" as C
+rectangle "Service UID: swarma-dispatcher" {
+  component "v0 no-argument sudo command\none request per invocation" as CMD
+  component "v1 daemon\npeer-authenticated socket" as DMN
+  component "Shared core\nauthority, admission, effects, reconciliation" as CORE
+  component "Execution supervisor\nv0 detached; v1 in daemon\nservice UID" as SUP
+  component "v0 internal sweep\nservice-only timer, every minute\nv1 daemon sweeps internally" as SW
+  database "Dispatcher-owned persistent state\ninput/1, agent/1, run/1, keys, claims,\neffect table, journal, index, bounded logs" as DS
 }
-component "Curator launch caller\n(compose plan)" as CUR
-component "swarma-user-manager\n(user.create, user.retire, exec.stop)" as H
-component "swarma-user-launcher\n(launch.start → start receipt)" as L
-component "swarma-credential-broker\n(bind with caller dependency, lease)" as BR
-node "curator-run narrow exec mode\n(agent account; first broker consumer)" as E
-node "swarma-session-runner\n(SH2+ agent account: PTY/app-server, renewal)" as SR
-
-P --> CUR : compose plan
-CUR --> CMD : caller-composed plan; dispatch-op/1\nsigned domain: swarma-dispatcher request/1
-O --> DMN : dispatch/1 + signature
-B ..> DMN : adapter (later)
-SH ..> DMN : launch request (no embedded broker client; later)
-SH ..> SR : session metadata / input (later)
-SR ..> BR : own broker connection (qualified later integration)
+component "swarma-user-manager\nprivileged helper (root)\nowns account ledger / termination evidence" as H
+component "swarma-user-launcher\nroot until GID/UID drop\nwrites start receipt" as L
+component "swarma-credential-broker\nunprivileged broker service\nowns bindings, grants/revocations, leases, secrets" as B
+component "curator-run narrow exec mode\nagent UID; first broker consumer\nthen exec harness under same account" as E
+component "swarma-session-host service\nSH2+ gated; own service UID\nowns session metadata, logs, receipts, fences" as SH
+component "swarma-session-runner\nSH2+ gated; agent UID\nowns PTY/app-server and lease renewal" as SR
+component "Key keeper\nlater gated integration\nowns registered identity / revocation state" as K
+C --> CMD : signed dispatch-op/1 (v0)
+C --> DMN : signed requests on dispatch/1 (v1)
 CMD --> CORE
 DMN --> CORE
 SW --> CORE
-CORE --> H : no-argument sudo; closed request on stdin\ncreate / retire / stop (own generations only; distinct effect IDs)
-CORE --> BR : bind / unbind (distinct effect IDs)\nlease chain + caller chain
-CORE --> SUP
-SUP --> L : no-argument sudo; launch.start on stdin\n{request_id: E-launch, generation, execution_id, epoch}
-L --> E : receipt while root; clear groups; set GID/UID; exec\n(immutable plan FD3; own broker connection)
-E --> BR : lease (own connection); broker re-checks\nthe caller dependency every time
+CORE --> DS : lock; journal before effects\natomic records; replay on startup
+CORE --> H : user.create / user.retire / exec.stop\ndistinct durable effect IDs; own generations
+CORE --> B : bind / unbind; attenuated leaf\nrequest intersect caller intersect dispatcher\ncaller chain retained as dependency
+CORE --> SUP : execution claim; durable registration
+SUP --> L : launch.start; distinct E-launch
+L --> E : receipt while root; reset; drop GID/UID\nimmutable plan FD3; no broker FD
+E --> B : own connection; lease\ncaller dependency rechecked
+CORE ..> SH : later backend; ticket + fenced operation IDs
+SH ..> L : host-role launch with valid unused ticket
+SH ..> SR : session input admission / metadata
+SR ..> B : later qualified consumer; own connection
+CORE ..> K : one-shot registration / separate revocation\nonly after confirmed retirement
 note bottom of CORE
-  Root (caller principal, request_id) is correlation;
-  E-create, E-bind and E-launch are distinct receiver keys (§4.5).
-  Capacity: v0 refuses; v1 queues. Quota/authority: always refuse.
+  Refusal: principal/key/signature/chain/quota failures never queue.
+  Capacity: v0 refuses; v1 queues and rechecks at dequeue.
+  Unknown/contradictory observations keep records pending:
+  never relaunch, release capacity or declare cleanup successful.
+  Provision failure: unbind if bound, retire if created; confirm cleanup.
+  Root caller request ID is correlation, not a shared receiver key.
+end note
+note right of SH
+  SH2+ disabled until ticket grammar, host role and ownership handoff
+  are published. Stop stays dispatcher -> helper exec.stop.
+  SH1 behavior is unspecified in spec §12.
+  Log handoff is unspecified in spec §16 (open question 5).
 end note
 note right of E
-  Caller composes; executor verifies and executes only.
-  No profile resolution; no network except broker.
-  Versioned intake/Decision 0021 amendment and
-  credential qualification required before activation.
+  §5.3 intake / Decision 0021 amendment and credential qualification
+  gate activation. Caller composes; executor verifies/executes only.
+  Executor CLI/plan schema are unspecified in spec §5.3.
 end note
+note right of K
+  Standing identity revocation is operator-only with a signed record.
+  Keeper API/process UID is unspecified in spec §14.
+  Broker service UID spelling is unspecified in spec §3.1.
+end note
+legend
+  Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#2-versions §2 versions]]
+  [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#3-identities-and-authority §3 authority]]
+  [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#4-records-and-state §4 state]]
+  [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#12-session-host-backend-later-activation-gate §12 SH2+]] / §14 gates
+endlegend
 @enduml

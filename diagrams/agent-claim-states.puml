@@ -1,0 +1,74 @@
+@startuml agent-claim-states
+title M-DP2: allocation, execution claim and capacity ownership, v0 / v1 (draft)
+state "agent/1 (dispatcher-owned record; helper owns OS account ledger)" as Agent {
+  state "provisioning" as Provisioning
+  state "idle" as Idle
+  state "running" as Active
+  state "retiring" as Retiring
+  state "removed" as Removed
+  state "failed" as Failed
+  [*] --> Provisioning : admitted provision
+  Provisioning --> Idle : create + binding confirmed
+  Provisioning --> Retiring : provisioning failed
+  Idle --> Active : dispatcher commits execution claim under lock
+  Active --> Idle : execution finished; kept allocation
+  Active --> Retiring : dispatch finished / allocation expired
+  Idle --> Retiring : retire / allocation expired
+  Retiring --> Retiring : effects pending / observations unknown or contradictory
+  Retiring --> Removed : applicable unbind, retire, identity cleanup confirmed
+  Retiring --> Failed : failed provision; applicable cleanup confirmed
+}
+state "run/1 execution claim (dispatcher-owned; enum §4.4)" as Exec {
+  state "claimed" as Claimed
+  state "launching" as Launching
+  state "started" as Started
+  state "stopping" as ClaimStopping
+  state "absent" as Absent
+  [*] --> Claimed : dispatcher writes execution_id + epoch
+  Claimed --> Launching : supervisor durable registration before launcher call
+  Claimed --> Absent : cancel before launch / no supervisor registration on reconcile
+  Launching --> Launching : receipt unknown; cancel waits; never relaunch
+  Launching --> Started : launcher receipt known and recorded
+  Started --> ClaimStopping : cancel / runtime / stop / supervisor known absent
+  ClaimStopping --> ClaimStopping : receipt missing -> retry same E-stop\nunknown/contradictory -> retain claim
+  ClaimStopping --> Absent : helper confirms no execution process remains
+}
+state "Capacity claim (§9; conceptual ownership, not a stored state enum)" as Capacity {
+  state "reserved for owner record\nclaim_id, class, resources, expires_at" as Reserved
+  state "owned by execution" as Owned
+  state "released after confirmed end/absence" as Released
+  [*] --> Reserved : dispatcher admits capacity
+  Reserved --> Owned : transfer at start
+  Owned --> Owned : unknown process evidence; no release
+  Owned --> Released : confirmed end/absence, including cancel/expiry/reconcile
+}
+note bottom of Agent
+  Dispatcher service UID swarma-dispatcher owns persistent agent/run records,
+  immutable inputs, effects, journal and capacity claims; state changes hold lock.
+  v0 detached supervisor / v1 daemon supervisor run as service UID;
+  launcher runs as root until agent UID exec; broker service is unprivileged.
+  Broker owns bindings/leases; launcher writes start receipt; helper confirms stop.
+  Failed provision unbinds if bound and retires if created.
+  Keeper integration: revoke only registered one-shot identity AFTER retirement;
+  standing revocation is operator-only (§14); unknown/refused revocation pending.
+end note
+note bottom of Exec
+  v0: at most one claim per allocation; competing start refuses agent_busy.
+  Unknown/contradictory evidence never becomes absent (§4.6).
+  Exact launcher-refusal claim transition is unspecified in spec §§4.4, 5.3.
+  Supervisor registration/loss are observations, not extra stored claim states.
+end note
+note bottom of Capacity
+  Temporary closure: v0 refusal / v1 queue; authority/quota never queue.
+  Prelaunch checks exclude the claim's own resources.
+  Claim-expiry transition details and persisted capacity-state enum
+  are unspecified in spec §§7.2, 9; expiry alone is not proof of absence.
+  Sweep owns lifetimes: v0 service-only every minute; v1 internal daemon.
+  No sweep running -> allocation status says lifetimes are unenforced (§7.2).
+end note
+legend
+  Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#43-agent-allocation-agent1 §4.3 agent/1]]
+  [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#44-execution-run1 §4.4 claim]]
+  [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#9-capacity §9 capacity]] / §§5, 7.1, 14
+endlegend
+@enduml

@@ -1,46 +1,87 @@
 @startuml v1-daemon
-!theme plain
-title v1: the daemon on the same core; the session-host backend needs launch tickets and host-owned fences
-
-participant "Orchestrator\n(agent account)" as O
-participant "swarma-dispatcher daemon\n(swarma-dispatcher)" as D
-participant "swarma-session-host\n(SH2+ service, later)" as SH
-participant "swarma-user-launcher" as L
-participant "swarma-session-runner\n(agent account, later)" as SR
-
-O -> D : connect; peer UID; server identity; hello
-O -> D : dispatch {request_id: R, caller-composed plan, …, auth: {key, sig}}
-note over O,D
-  Signed domain: swarma-dispatcher request/1.
-  Root R is correlation; each downstream effect uses its own derived ID.
-  Quota/authority failures refuse permanently; never queue.
-end note
-D -> D : prepare; capacity: temporary closure
-D --> O : queued {handle} (fair, bounded, durable)
-... gate opens ...
-D -> D : re-check authority and every gate; provision
-alt session host backend activated
-  D -> SH : start {logical_session_id, execution_id, controller_epoch, op_id, ticket}
-  SH -> SH : check fence + epoch atomically with the effect
-  SH -> L : no-argument sudo; launch.start on stdin\nwith dispatcher ticket (joint host-role/signature gate)
-  L -> L : validate ticket and approved executor; receipt while root
-  L -> SR : reset; clear groups; set GID/UID; exec
-  SR -> SR : own PTY or per-session app-server transport;\nown lease renewal (later qualified consumer)
-  note over SH,SR
-    Service owns metadata, logs, receipts, fences and input admission.
-    Runner under agent UID owns execution transport, not service UID.
-    Stop remains dispatcher → helper exec.stop; no signal relay through sudo.
-  end note
-  SH --> D : events: started, exited (receipts)
-else default
-  D -> D : in-daemon supervisor → launcher → curator-run narrow exec\n(agent account; first broker consumer; §5.3 intake gate)
+title Companion to M-DP1: v1 daemon; SH2+ backend disabled until activation gate
+participant "Caller process\ncaller UID / principal + key" as C
+participant "swarma-dispatcher daemon\nservice UID swarma-dispatcher\nowns admission, input/agent/run records, claims, cleanup" as D
+participant "swarma-session-host\nSH2+ own service UID\nowns metadata, logs, receipts, fences, input admission" as SH
+participant "swarma-user-launcher\nroot until agent UID drop; receipt writer" as L
+participant "swarma-session-runner\nSH2+ agent UID\nowns PTY/app-server and renewal" as SR
+participant "Credential broker\nunprivileged; owns binding / grant / lease state" as B
+participant "swarma-user-manager\nroot; owns account ledger / stop evidence" as H
+C -> D : connect; peer UID; server identity; hello; signed dispatch
+alt authentication / permission / version / malformed response failure
+  break transport refusal
+    D --> C : failure; client never falls back to v0
+  end
+else ambiguous reply
+  C -> D : repeat same request_id and signature
 end
-D --> O : event: running / done {outcome}
+D -> D : reconcile; prepare authority, quota, capacity
+alt quota / authority failure
+  break permanent refusal
+    D --> C : typed refusal; never queue
+  end
+else temporary capacity closure
+  D -> D : persist bounded fair queue
+  D --> C : queued handle
+  ... gate opens ...
+  D -> D : recheck principal, authority/window, quotas and all gates
+  alt authority / quota / window refuses at dequeue
+    break no launch
+      D --> C : typed refusal
+    end
+  else capacity remains closed
+    break remain queued
+      D -> D : retain durable queue; no launch
+    end
+  end
+end
+== admitted request only ==
+D -> D : provision; owned execution claim; journal distinct effects
+alt SH2+ backend gates published and activated (§§12, 14)
+  D -> SH : start {logical_session_id, execution_id, controller_epoch, op_id, ticket}
+  alt fence / current controller epoch invalid
+    SH --> D : refuse effect; live pid is not controller authority
+  else fence + epoch validated atomically with effect
+    SH -> L : host-role launch.start + dispatcher ticket
+    alt wrong host principal, reused ticket, wrong generation/executor/plan, revoked claim
+      L --> SH : refuse launch
+    else valid unused ticket for dispatcher-owned generation
+      L -> L : write start receipt while root
+      L -> SR : reset; clear groups; set GID/UID; exec
+      SR -> B : own broker connection; qualified lease and renewal
+      SH --> D : receipts/events
+    end
+  end
+  note over D,SR
+    Ticket signature/version/canonical bytes and host-role schema
+    are unspecified in spec §§12, 16; backend remains disabled.
+    Ownership handoffs must be specified before activation.
+    SH1 behavior is unspecified in spec §12; no SH1 migration is asserted.
+    Log handoff is unspecified in spec §16 (open question 5).
+  end note
+else default supervisor backend
+  D -> D : service-UID supervision -> root launcher -> agent-UID curator-run\n(§5.3 intake / Decision 0021 / qualification gate)
+end
+opt stop / cancel / recovery for an execution that launched
+  D -> H : exec.stop (journaled E-stop; own generation/execution)
+  alt termination observation unknown / contradictory
+    D -> D : retain state + capacity; same-effect retry; never relaunch
+  else termination confirmed
+    H --> D : no execution process remains
+    D -> D : record outcome; applicable cleanup; terminal after confirmation
+  end
+end
+D --> C : events / current execution record; outcome separate from state
 note over D
-  sweeps internally; v0 uses the internal service-only sweep entry.
-  Board and host request launches; neither embeds a broker client.
-  activation from v0 is an operator transaction:
-  stop admission → exclusive state → migrate → drain v0 supervisors
-  → reconcile → mode = daemon → ready
+  Internal sweep; distinct downstream effect IDs, retries reuse IDs.
+  v0 -> v1: stop admission, exclusive state, check/migrate, drain v0 supervisors,
+  reconcile, switch recorded mode, ready. Rollback reverses the steps (§11).
+  Board/host clients never embed broker clients (§5.3).
+  Exact event payloads and recovery delivery are unspecified in spec §§8, 12, 14.
+  Broker service UID spelling is unspecified in spec §3.1.
 end note
+legend
+  Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#83-v1-socket-dispatch1 §8.3 socket]]
+  [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#12-session-host-backend-later-activation-gate §12 backend]] / §§7, 9, 11, 14
+endlegend
 @enduml

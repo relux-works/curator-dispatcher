@@ -1,28 +1,57 @@
 @startuml reconcile
-!theme plain
-title Reconciliation: observations are known present, known absent, unknown or contradictory
-
-participant "swarma-dispatcher" as D
-database "journal + effect table + records" as J
-participant "Helper ledger\n+ start receipts" as H
-participant "Broker" as B
-
-D -> J : take the lock; replay the journal; list non-terminal records
-loop each record, state by state
-  D -> H : observe generation, claim, receipt (by effect id)
-  D -> B : observe binding (by effect id)
+title Companion to M-DP1 / M-DP2: v0 / v1 reconciliation (draft)
+participant "Dispatcher core\nservice UID swarma-dispatcher" as D
+database "Dispatcher-owned journal, effects,\ninput/agent/run records and claims" as J
+participant "swarma-user-manager\nroot; account ledger / stop evidence" as H
+participant "Credential broker\nunprivileged; binding / grant / lease owner" as B
+participant "Process evidence\nsupervisor service UID / executor agent UID" as P
+D -> J : lock; replay journal; list non-terminal records
+loop each allocation / execution, state by state (§7.1)
+  D -> H : observe generation, create effect, start/termination receipts
+  D -> B : observe binding by effect ID
+  D -> P : observe supervisor registration / execution identity
   alt any observation unknown or contradictory
-    D -> J : leave the record; retry later (never relaunch, never declare clean)
-  else provisioning, account present, bind unknown→absent
-    D -> B : bind if the request is still valid, else retire
-  else claim "claimed", no supervisor registration
-    D -> J : claim absent (no launch will happen)
-  else started, supervisor known absent
-    D -> H : exec.stop (same effect id) → outcome lost
-  else retiring / cleaning with pending effects
-    D -> B : unbind (same effect id)
-    D -> H : user.retire (same effect id)
-    D -> J : terminal only when both are confirmed
+    D -> J : retain state and capacity; retry observation later\nnever relaunch or declare cleanup successful
+  else provisioning; create effect unknown before query
+    D -> J : use known ledger answer; never create again until known
+  else provisioning; account present; bind known absent after query
+    alt request still valid
+      D -> B : bind with journaled effect ID
+    else invalid authority/window
+      D -> J : retire; applicable cleanup must be confirmed
+    end
+  else idle; binding known absent; allocation not expired
+    D -> D : fresh authority checks
+    alt authority valid
+      D -> B : rebind
+    else authority gone
+      D -> J : retire
+    end
+  else claimed; no supervisor registration
+    D -> J : mark execution claim absent; no later launch
+  else launching; receipt unknown
+    D -> J : wait for receipt/launcher answer; cancel also waits; never relaunch
+  else started; supervisor known absent
+    D -> H : exec.stop {same E-stop, generation, execution_id}
+    H --> D : termination receipt only after no process remains
+    D -> J : record lost after confirmation
+  else stopping; termination receipt missing
+    D -> H : repeat exec.stop with same effect ID
+  else retiring / cleaning; pending effects
+    D -> B : repeat applicable unbind with same effect ID
+    D -> H : retire only after unbind confirmed; same retire effect ID
+    D -> J : applicable one-shot identity cleanup after retirement (§14)\nterminal only after all required confirmations
   end
 end
+note over D,J
+  v0 invocation, v1 startup/periodic, explicit reconcile (§7.1).
+  v0 internal service-only sweep every minute; v1 daemon internal (§7.2).
+  Intent is journaled before every external effect (§4.1).
+  Refused cleanup stays pending; unknown is never known absent (§4.6).
+  Keeper API and broker service UID spelling are unspecified in spec §§14, 3.1.
+end note
+legend
+  Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#71-reconciliation §7.1 reconciliation]]
+  [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#46-observations §4.6 observations]] / §§5.4, 9, 14
+endlegend
 @enduml

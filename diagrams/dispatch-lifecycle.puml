@@ -1,91 +1,168 @@
 @startuml dispatch-lifecycle
-!theme plain
-title v0.3: provision an agent, then start one execution (dispatch = both + retire on exit)
-
-participant "Caller" as C
-participant "swarma-dispatcher\n(swarma-dispatcher)" as D
-participant "swarma-user-manager" as H
-participant "swarma-credential-broker" as B
-participant "Supervisor" as S
-participant "swarma-user-launcher" as L
-participant "curator-run narrow exec mode\n(agent account; first broker consumer)" as E
-
-== provision ==
-C -> C : compose immutable plan and resolved PATH; digest on caller side
-C -> D : provision {request_id: R, accounts, …, grants, auth: {key, sig}}
-note over C,D
-  Signed domain: swarma-dispatcher request/1 + newline + CCJ-1 without auth.
-  Root (caller principal, R) is correlation, not each downstream key.
-end note
-D -> D : reconcile first; prepare: principal ↔ key, signature,\ncaller chain (agent.spawn, credential.lease, depth ≥ 1),\nquotas, constructible leaf; write input/1
-alt refused
-  D --> C : error {code}
-else accepted
-  alt capacity gate closed
+title M-DP1: v0 / v1 one-shot lifecycle (draft; §5.3 intake gate)
+participant "Caller process\ncaller UID / principal + key" as C
+participant "Dispatcher core\nservice UID swarma-dispatcher" as D
+database "Dispatcher-owned state\ninputs, records, effects, claims, journal, logs" as J
+participant "swarma-user-manager\nroot; owns account ledger / stop evidence" as H
+participant "Credential broker\nunprivileged; owns binding / lease / grant state" as B
+participant "Supervisor\nservice UID; v0 detached / v1 in daemon" as S
+participant "swarma-user-launcher\nroot; writes start receipt" as L
+participant "curator-run -> harness\nagent UID; agent home / working directory" as E
+== prepare and provision (§5.1) ==
+C -> C : compose plan and resolved PATH; digest
+C -> D : signed provision or dispatch; caller-scoped root R
+D -> J : reconcile first under lock; replay journal (§7.1)
+D -> D : principal/key/signature/chains, quotas, leaf constructibility, digest
+alt prepare refused
+  break prepare refusal
+    D --> C : typed refusal; no external effect
+  end
+else prepare accepted
+  D -> J : write immutable input/1
+  alt temporary capacity closure
     alt v0
       break capacity refusal
-        D --> C : refuse capacity:* (no provisioning or start)
+        D --> C : capacity:*; no provisioning/start
       end
     else v1
+      D -> J : durable bounded fair queue
       D --> C : queued handle
-      ... capacity opens ...
-      D -> D : dequeue re-checks authority and all gates
+      ... gate opens ...
+      D -> D : recheck principal, authority/window, quota and all gates
+      alt permanent refusal or expired window
+        break dequeue refused
+          D --> C : refusal (never queue authority/quota failures)
+        end
+      else capacity still closed
+        break remain queued
+          D -> J : keep queued; no provisioning/start
+        end
+      end
     end
   end
-  group only after owned capacity claim admitted
-    D -> H : user.create {kind: agent, label, request_id: E-create}
-    H --> D : {uid, generation}
-    D -> D : sign leaf agent:<generation> = request ∩ caller ∩ own grant
-    D -> B : bind {lease chain, caller chain, intersection, request_id: E-bind}
+  D -> J : owned capacity claim; journal E-create intent
+  D -> H : user.create {request_id: E-create, kind: agent}
+  alt create observation unknown / contradictory
+    break reconcile before further effects
+      D -> J : provisioning pending; query ledger by E-create; never create again until known
+    end
+  else account created
+    H --> D : uid, generation
+  else create refused
+    break provisioning failure
+      D -> J : retiring; confirm applicable cleanup before failed
+    end
+  end
+  opt helper v1
+    D -> H : fw.apply (its own journaled effect)
+  end
+  D -> D : leaf agent:generation = request intersect caller intersect own grant
+  D -> J : E-bind intent; caller chain + intersection dependency
+  D -> B : bind {request_id: E-bind, uid, generation, both chains}
+  alt bind confirmed
     B --> D : binding_id
-    D --> C : agent/1 {agent_id, state: idle}
+    D -> J : allocation idle
+  else bind refused or result ambiguous
+    break recover failed / uncertain provisioning
+      D -> J : known refusal -> retiring; unknown -> observe by E-bind first
+      note over D,B
+        Known absent + still-valid request may bind; otherwise retire (§7.1).
+        Unbind if bound, retire if created, each confirmed before failed (§5.1).
+        Unknown is never treated as absent (§4.6).
+      end note
+    end
   end
 end
-note over D,B
-  Quota/authority failures never queue in either version.
-  E-create and E-bind are distinct derived effect IDs (§4.5).
-  Proceed to start only for an admitted idle allocation.
-end note
-== start ==
-C -> D : start {request_id: R-start, agent_id, plan, plan_digest, auth}
-note over C,D
-  Separate provision/start commands have separate root IDs.
-  A combined dispatch uses one root R for both halves (§4.5).
-end note
-D -> D : re-check authority and lifetime; owned execution capacity claim\n(v0 refusal / v1 queue); claim {execution_id, epoch}
+== start (§5.3): only an admitted idle owned allocation ==
+C -> D : start with separate root R-start (dispatch keeps R)
+D -> D : recheck authority / lifetime; capacity claim (v0 refuse / v1 queue)
+alt busy, expired, unowned or invalid authority
+  break start refused
+    D --> C : typed refusal; no launch
+  end
+end
+D -> J : under lock claim {execution_id, epoch}; allocation running
 D -> S : start supervisor
-S -> D : registered (pid, start time) — durable ack
-S -> L : no-argument sudo launcher; stdin launch.start\n{request_id: E-launch, generation, execution_id, epoch, executor, plan}
-L -> L : validate generation, approved executor, home;\nwrite start receipt while root (pid, start time, boot id)
-L -> E : reset environment/descriptors; clear groups; set GID/UID;\nexec (immutable plan on FD3; no inherited broker connection)
-S -> D : receipt recorded → running
-E -> E : verify caller-composed plan; no compose/profile resolution;\nprepare work dir in agent home; protected binding
-E -> B : open own connection; lease (caller dependency re-checked)
-E -> E : qualified injection; exec harness
-note over L,E
-  Versioned intake / Decision 0021 amendment must be published and qualified.
-  Narrow exec mode has no network except broker; harness egress is separate.
-end note
-... running ...
-alt cancel or max_runtime
-  S -> H : exec.stop {request_id: E-stop, generation, execution_id}
-  H --> S : termination receipt (no process of the execution remains)
-else exit
-  E --> S : exit status
-end
-S -> D : outcome; allocation idle (or retiring for dispatch)
-opt dispatch on-exit cleanup or allocation retirement
-  D -> B : unbind {request_id: E-unbind, …}
-  B --> D : confirmed
-  D -> H : user.retire {request_id: E-retire, home: archive | delete, …}
-  H --> D : account retirement confirmed
-  opt keeper integration active and identity registered as one-shot
-    D -> D : separate identity revocation effect after retirement; confirm via keeper
+S -> J : durable process identity registration and acknowledgement
+D -> J : journal E-launch intent
+alt cancel before launch
+  D -> J : serialise cancel with claim; mark absent; never call launcher
+else launch initiated
+  S -> L : launch.start {request_id: E-launch, generation, execution_id, epoch, executor, plan}
+  alt receipt / launcher answer unknown
+    S -> J : launching pending; wait for receipt/answer; never relaunch
+    opt cancel during unknown launch
+      D -> S : cancel; wait for receipt or refusal, then stop
+    end
+    ... receipt or launcher answer becomes known ...
   end
-  note over D,H
-    Standing identities: operator-only signed revocation.
-    Terminal only after applicable cleanup effects confirmed.
-    Unknown effects stay pending and retry with their own same ID (§7).
-  end note
+  alt launcher refuses
+    L --> S : refusal
+    S -> J : failed stage; confirm absence and applicable cleanup
+  else launch accepted
+    L -> L : validate generation / executor / home; write receipt while root
+    L -> E : reset env/FDs; clear groups; set GID/UID; exec; immutable plan FD3
+    S -> J : start receipt {pid, start_time, boot_id}; running
+    E -> E : verify only; prepare agent-home working directory; protected binding
+    E -> B : own connection; lease (caller dependency rechecked)
+    E -> E : qualified injection; exec harness
+    alt exit, cancel or max_runtime
+      S -> H : exec.stop {request_id: E-stop, generation, execution_id}
+    else supervisor known absent
+      D -> H : recovery exec.stop with same E-stop; record lost after confirmation
+    end
+    alt termination observation unknown / contradictory
+      break stopping pending
+        D -> J : stopping pending; retry E-stop; retain capacity; no cleanup success
+      end
+    else no process of execution remains
+      H --> D : confirmed termination receipt
+      D -> J : outcome; capacity released after confirmed end/absence
+    end
+  end
 end
+== applicable cleanup (§5.4; no success from uncertain observations) ==
+opt kept allocation
+  D -> J : allocation idle after execution finish
+end
+opt dispatch on-exit, retirement, expiry or failed provisioning
+  D -> J : retiring / cleaning; journal E-unbind intent if bound
+  opt binding exists
+    D -> B : unbind {request_id: E-unbind}
+    alt unbind confirmed
+      B --> D : confirmation
+    else unknown / refused
+      break cleanup pending
+        D -> J : retain cleanup; retry / observe same E-unbind
+      end
+    end
+  end
+  opt account was created
+    D -> J : journal E-retire intent
+    D -> H : user.retire {request_id: E-retire, home: archive | delete}
+    alt retirement confirmed
+      H --> D : confirmation
+    else unknown / refused
+      break cleanup pending
+        D -> J : retain cleanup; retry / observe same E-retire
+      end
+    end
+  end
+  opt keeper active; registration recorded identity as one-shot
+    D -> J : separate identity-revocation effect after retirement (§14)
+    note over D,J : Keeper API is unspecified in spec §14; standing revocation stays operator-only.
+  end
+  D -> J : terminal only after applicable effects confirmed; unknown/refused cleanup stays pending
+end
+note over D,J
+  Journal intent before every external effect; persist result/observation (§4).
+  E-create, E-bind, E-launch, E-stop, E-unbind, E-retire are distinct;
+  retries reuse their ID; root (caller,R) retained only as correlation.
+  Outcome kind is separate from run state (§4.4 / §8.2).
+end note
+legend
+  Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#5-lifecycle §5 lifecycle]]
+  [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#45-effect-ids-and-the-effect-table §4.5 IDs]] / §6 stop / §7 recovery / §9 capacity
+  Broker service UID spelling and exact executor intake schema are unspecified in spec §§3.1, 5.3.
+endlegend
 @enduml

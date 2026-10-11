@@ -24,6 +24,18 @@ The one-shot executor is `curator-run` from `curator-agent-launcher`, in a versi
 - The v0 timer invokes `swarma-dispatcher sweep` directly as the service account every minute; this is an internal maintenance entry, outside the public no-argument sudo request path. The v1 daemon sweeps internally (§7.2).
 - After any crash, the dispatcher reconciles its records with the helper, the broker and the process table before it accepts new work.
 
+## Diagrams
+
+These PlantUML sources describe the draft v0/v1 design and label later SH2+ gates; they do not claim implementation. Each figure links its defining spec sections and marks unspecified details.
+
+| Audit row | Figures | Spec |
+|---|---|---|
+| M-DP1 | [Components](diagrams/components.puml), [dispatch lifecycle](diagrams/dispatch-lifecycle.puml) | [Versions](spec/dispatcher.md#2-versions), [lifecycle](spec/dispatcher.md#5-lifecycle) |
+| M-DP2 | [Run states](diagrams/run-states.puml), [agent and claim states](diagrams/agent-claim-states.puml) | [Records](spec/dispatcher.md#4-records-and-state), [capacity](spec/dispatcher.md#9-capacity) |
+| M-DP3 | [Storage layout](diagrams/storage-layout.puml) | [State directory](spec/dispatcher.md#41-state-directory), [socket](spec/dispatcher.md#83-v1-socket-dispatch1) |
+
+Companion views: [reconciliation](diagrams/reconcile.puml) ([§7.1](spec/dispatcher.md#71-reconciliation)) and [v1 daemon / gated SH2+ backend](diagrams/v1-daemon.puml) ([§12](spec/dispatcher.md#12-session-host-backend-later-activation-gate)).
+
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).

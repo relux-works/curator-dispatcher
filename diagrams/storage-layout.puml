@@ -1,0 +1,58 @@
+@startuml storage-layout
+skinparam componentStyle rectangle
+title M-DP3: dispatcher storage ownership and durable ordering, v0 / v1 (draft)
+component "swarma-dispatcher process\nv0 command / v1 daemon\nservice UID swarma-dispatcher" as D
+component "Supervisor\nv0 detached / v1 in daemon\nsame service UID" as S
+folder "Service-private state root (dispatcher-owned)\n/opt/swarma/services/swarma-dispatcher/state\nmode 0700 (§4.1)" as ROOT {
+  artifact "Immutable input/1\ncaller principal + root request_id, canonical request,\nplan bytes, full caller chain, digests (§4.2)" as INPUT
+  artifact "agent/1 allocations\nuid + generation, binding / leaf / caller chain IDs,\nregistered caller key, lifetime, cleanup (§4.3)" as AG
+  artifact "run/1 executions\nowner + input, plan digest, execution claim + epoch,\nsupervisor/start/termination evidence, outcome (§§4.4, 6)" as RUN
+  artifact "Effect table\nid, component, operation, intent, result, observation (§4.5)" as EFFECT
+  artifact "Journal\nappend + flush before external effect; replay at startup" as JOURNAL
+  artifact "Index + capacity claims\nowned resources, expires_at (§9)" as CLAIM
+  artifact "Dispatcher key + lock (§4.1)\nall state changes / reconciliation hold lock" as KEY
+  artifact "Bounded private executor output logs (§§6, 13)" as LOG
+}
+folder "v1 runtime socket directory\n/opt/swarma/run/dispatcher/ (§8.3)" as SOCKET
+component "swarma-user-manager (root)\nowns OS account ledger / termination evidence" as H
+component "swarma-user-launcher (root until drop)\nwrites start receipt before agent UID exec" as L
+component "Credential broker (unprivileged service)\nowns bindings, grants/revocations, leases, credentials" as B
+component "curator-run -> harness (agent UID)\nagent-home working directory; own broker connection" as E
+D --> ROOT : owned state; configuration selects root\nnever inherited HOME
+D --> SOCKET : v1 only; peer authentication\nno fallback on auth/version/malformed reply
+S --> RUN : durable registration before launch\nrecord launcher / stop receipts
+S --> LOG : bounded output
+D --> H : journal intent -> effect -> record result
+D --> B : journal intent -> bind/unbind -> record result
+S --> L : journaled launch intent; immutable plan FD3
+L --> E : root receipt first; reset; clear groups; set GID/UID; exec
+E --> B : own authenticated lease connection
+note bottom of ROOT
+  Record replacement: temporary file -> flush -> rename -> directory flush.
+  Journal replay covers a crash between journal and record replacement (§4.1).
+  Input is written once before acceptance; later queue/recovery reads it (§4.2).
+  Unknown/contradictory evidence keeps records pending: no relaunch,
+  no capacity release, no successful cleanup; retry observations (§§4.6, 7.1).
+  Unbind then account retirement; applicable one-shot identity revocation
+  is a separate confirmed effect after retirement (§§5.4, 14).
+  Subfile names, per-file modes/groups and retention/deletion rules
+  are unspecified in spec §§4.1, 6, 13; labels are logical records, not paths.
+end note
+note right of SOCKET
+  Socket basename, owner/group/mode details are unspecified in spec §8.3.
+  Broker service UID spelling is unspecified in spec §3.1.
+  Refuse mode/state-version mismatch (§11); rollback reverses activation.
+  v1 activation: stop admission, exclusive state, check/migrate,
+  drain v0 supervisors, reconcile, record daemon mode, publish ready.
+end note
+note bottom of E
+  §5.3 one-shot intake/qualification gate remains closed until published.
+  SH2+ target (§12): host service owns metadata/logs/receipts/fences;
+  agent runner owns PTY/app-server and renewal. State/log handoff details
+  are unspecified in spec §§12, 16; no alternate storage path is asserted.
+end note
+legend
+  Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#41-state-directory §4.1 state directory]]
+  [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#83-v1-socket-dispatch1 §8.3 socket]] / §§6, 7.1, 11
+endlegend
+@enduml

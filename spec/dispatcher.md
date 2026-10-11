@@ -55,6 +55,8 @@ Without a dispatcher, Curator can still launch directly, without accounting; wit
 
 ## 2. Versions
 
+Figure M-DP1: [process and component boundaries](../diagrams/components.puml).
+
 | Version | Shape | Adds |
 |---|---|---|
 | v0 | the `swarma-dispatcher` binary run under its service account through `sudo -u`, one request per invocation; detached supervisors; an internal periodic sweep; temporary capacity closure refuses | the core: requests, allocations, executions, authority, capacity claims, provisioning, start, stop, cleanup, reconciliation |
@@ -108,6 +110,8 @@ Defaults (owner decision 2026-10-10), all configurable:
 The per-caller execution limit matches the host's existing rule of two runs per orchestrator.
 
 ## 4. Records and state
+
+Figures M-DP2: [execution states](../diagrams/run-states.puml) and [allocation and claim states](../diagrams/agent-claim-states.puml); M-DP3: [storage ownership and durable ordering](../diagrams/storage-layout.puml).
 
 ### 4.1 State directory
 
@@ -185,6 +189,8 @@ Reconciliation and recovery classify every observation of the helper ledger, the
 
 ## 5. Lifecycle
 
+Figure M-DP1: [provision, launch, refusal and recovery sequence](../diagrams/dispatch-lifecycle.puml).
+
 ### 5.1 Allocation
 
 `provision` (or the first half of `dispatch`):
@@ -232,6 +238,8 @@ A cancel is serialised with the claim: before the launch, it marks the claim `ab
 
 ### 7.1 Reconciliation
 
+Companion figure: [state-by-state reconciliation](../diagrams/reconcile.puml).
+
 Runs at every v0 invocation before the request is read into state, at v1 daemon start and periodically, and on `reconcile`. For every allocation and execution that is not terminal, it compares the journal and effect table with the observations (§4.6), state by state:
 
 | State | Observation | Action |
@@ -276,6 +284,8 @@ A discriminated union on `op`; every operation has a closed set of members, and 
 
 ### 8.3 v1 socket `dispatch/1`
 
+Companion figure: [v1 daemon and gated SH2+ backend](../diagrams/v1-daemon.puml).
+
 The daemon `swarma-dispatcher` runs as `swarma-dispatcher` and listens in `/opt/swarma/run/dispatcher/`. It uses the framing and connection rules of broker §4.1 and §13 with one declared difference: frames up to 128 KiB (§10). Clients use the transport the installation mode names; an authentication, permission, version or malformed-response failure never makes a client fall back to the other transport. After an ambiguous reply the client repeats the same request with the same `request_id` and signature.
 
 ### 8.4 Relation to the platform launch contract
@@ -283,6 +293,8 @@ The daemon `swarma-dispatcher` runs as `swarma-dispatcher` and listens in `/opt/
 The dispatcher implements a **local headless subset** of `dispatch(LaunchRequest)` (architecture §7.1, §5.1): it starts already composed plans; it records the opaque provenance (`board_ref`, `parent`) whole; it refuses interactive transport, native resume, seeded continuity and remote targets (`unsupported_combination`). Interactive executions under agent accounts arrive with the session host's platform phase (its backend gate, §12), not in this dispatcher (owner decision 2026-10-10); goals are optional. For now only the launching caller at start (through the launcher), or the board/orchestrator for board goals, authors a session goal (D-GOALS); an agent account has no goal capability on the session-host socket. This keeps authorship with the initiating caller while a separate agent namespace and its authority bounds await SH2+ design. The host must function without goals, a board, an orchestrator or their toolchain; board goals are an optional client of a generic goal interface. Choosing self-goals in a separate namespace versus caller/board-only authorship remains deferred (§16). A versioned LCH adapter, owned with the launch client, composes plans, compares pins and maps `LaunchRequest` onto these operations; until it exists, nothing claims full LCH conformance.
 
 ## 9. Capacity
+
+Figure M-DP2: [capacity ownership alongside allocation and execution claims](../diagrams/agent-claim-states.puml).
 
 | Admission condition | v0 | v1 |
 |---|---|---|
@@ -313,6 +325,8 @@ A request whose plan exceeds the smallest bound on its path is refused at `prepa
 - **Activation of v1** is an operator transaction: stop admission; take exclusive ownership of the state; check and migrate the state version; let v0 supervisors finish their executions (the first activation drains, it does not adopt live supervisors); reconcile; switch the recorded mode to `daemon` and publish readiness. Every v0 mutation and every v0 supervisor checks the recorded mode and backend generation and stops when they change. Rollback reverses the same steps; a v0 binary refuses state written by a newer version.
 
 ## 12. Session-host backend (later; activation gate)
+
+Companion figure: [backend process identities, ticket refusals and recovery](../diagrams/v1-daemon.puml).
 
 Before the SH2+ session-host module may hold executions through its agent-side runner (not the service UID):
 
@@ -369,4 +383,12 @@ The executor and first consumer are decided by D-EXECUTOR, managed PATH by D-PAT
 
 ## Appendix B. Diagrams
 
-PlantUML sources in [`diagrams/`](../diagrams/): `components.puml`, `dispatch-lifecycle.puml`, `run-states.puml`, `reconcile.puml`, `v1-daemon.puml`.
+PlantUML sources are design views of this spec, not implementation or qualification evidence. The audit's module rows map to:
+
+| Audit row | Figures | Defining sections |
+|---|---|---|
+| M-DP1 | [Components](../diagrams/components.puml), [dispatch lifecycle](../diagrams/dispatch-lifecycle.puml) | §§2–6, 9, 12, 14 |
+| M-DP2 | [Run states](../diagrams/run-states.puml), [agent and claim states](../diagrams/agent-claim-states.puml) | §§4.3–4.6, 5–7, 9 |
+| M-DP3 | [Storage layout](../diagrams/storage-layout.puml) | §§4.1–4.5, 6, 8.3, 11 |
+
+Companion views: [reconciliation](../diagrams/reconcile.puml) (§7.1) and [v1 daemon / gated SH2+ backend](../diagrams/v1-daemon.puml) (§§8.3, 12). Unspecified details are marked in the figures; their notes do not introduce contract behavior.

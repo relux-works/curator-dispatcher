@@ -1,38 +1,54 @@
 @startuml run-states
-!theme plain
-title States: allocations (agent/1) and executions (run/1)
-
-state "agent/1" as A {
-  [*] --> provisioning
-  provisioning --> idle : created + bound
-  provisioning --> a_retiring : failure
-  idle --> running : execution claimed
-  running --> idle : execution finished (kept agent)
-  running --> a_retiring : dispatch finished / expired
-  idle --> a_retiring : retire / lifetime ended
-  state "retiring" as a_retiring
-  a_retiring --> removed : unbind + retire confirmed
-  a_retiring --> a_failed : (only for a failed provision,\nafter cleanup is confirmed)
-  state "failed" as a_failed
-}
-
-state "run/1" as R {
-  [*] --> accepted
-  accepted --> queued : v1, gate closed
-  queued --> starting : gate opens, authority re-checked
-  queued --> cancelled : cancel / window passed
-  accepted --> starting : claim taken
-  starting --> running : start receipt recorded
-  starting --> stopping : cancel / launch failure
-  running --> stopping : exit / cancel / max_runtime
-  stopping --> cleaning : termination receipt or exit recorded
-  cleaning --> done : obligations confirmed
-  cleaning --> cleaning : effect unknown → retry
-  done --> [*]
-  cancelled --> [*]
-}
-note bottom of R
-  terminal outcome is recorded only after cleanup is confirmed:
-  exit | failed | cancelled | expired | lost
+title M-DP2: execution run/1 states, v0 / v1 (draft; one-shot intake gated)
+state "accepted" as Accepted
+state "queued (v1 only)" as Queued
+state "starting" as Starting
+state "running" as Running
+state "stopping" as Stopping
+state "cleaning" as Cleaning
+state "Terminal run state\ndone | failed | cancelled | expired" as Terminal
+[*] --> Accepted : dispatcher accepts immutable input
+Accepted --> Queued : v1 temporary capacity closure
+Accepted --> Starting : authority + capacity admitted; execution claim
+Queued --> Starting : authority/window/quota + all gates rechecked
+Queued --> Queued : temporary closure / operator drain park
+Starting --> Running : supervisor registered; launcher receipt recorded
+Starting --> Stopping : cancel during/after launch; wait for receipt or refusal
+Running --> Stopping : exit / cancel / max_runtime
+Running --> Stopping : supervisor known absent; recovery exec.stop; outcome lost
+Stopping --> Stopping : termination missing: repeat same E-stop\nunknown / contradictory: retain state and claim
+Stopping --> Cleaning : stop / absence confirmed; record outcome\nallocation idle or retiring per policy
+Cleaning --> Cleaning : pending cleanup: same effect IDs\nunknown/refused identity revocation remains pending
+Cleaning --> Terminal : applicable cleanup confirmed (§§5.4, 7.1)
+Terminal --> [*]
+note right of Starting
+  Owner: dispatcher service UID swarma-dispatcher.
+  v0 detached supervisor; v1 supervisor in daemon, same UID.
+  Launcher is root until exec under agent UID.
+  Cancel before launch marks claim absent; launcher never called.
+  Unknown start: wait for receipt/answer, never launch again.
+  Exact failed-launch/pre-launch-cancel run-state edges are
+  unspecified in spec §5.3; no extra stored state is invented.
 end note
+note left of Queued
+  v0 capacity closes -> refusal, no queued state.
+  Quota / authority failures refuse in both versions, never queue.
+  Cancel, window expiry (expired_in_queue), drain reject:
+  exact run-state edges are unspecified in spec §§4.4, 9.
+  No direct terminal edge bypassing cleanup is asserted.
+end note
+note right of Terminal
+  Stored outcome is separate from run state:
+  exit | failed | cancelled | expired | lost (§§4.4, 8.2).
+  lost is an outcome, not a stored state.
+  Exact terminal-state/outcome mapping is unspecified in spec §4.4.
+  Dispatcher owns run records, claims, effects, receipts and logs;
+  helper owns account ledger / termination evidence;
+  launcher writes start receipt; broker owns bindings/leases.
+  Agent and capacity claim lifecycles: agent-claim-states.puml.
+end note
+legend
+  Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#44-execution-run1 §4.4 run/1]]
+  [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#53-execution §5.3 execution]] / §6 supervisor / §7.1 recovery / §9 capacity
+endlegend
 @enduml
