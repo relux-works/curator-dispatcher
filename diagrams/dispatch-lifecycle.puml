@@ -1,5 +1,5 @@
 @startuml dispatch-lifecycle
-title M-DP1: v0 / v1 one-shot lifecycle (draft; §5.3 intake gate)
+title M-DP1: v0 / v1 ordinary allocation and one-shot lifecycle (draft; §5.3 intake gate)
 participant "Caller process\ncaller UID / principal + key" as C
 participant "Dispatcher core\nservice UID swarma-dispatcher" as D
 database "Dispatcher-owned state\ninputs, records, effects, claims, journal, logs" as J
@@ -10,6 +10,10 @@ participant "swarma-user-launcher\nroot; writes start receipt" as L
 participant "curator-run -> harness\nagent UID; agent home / working directory" as E
 == prepare and provision (§5.1) ==
 C -> C : compose plan and resolved PATH; digest
+note right of C
+  Orchestrator caller: own agent account and Curator home configuration (§5.2).
+  Child profile/environment access and narrowed-grant constraints are open (§16).
+end note
 C -> D : signed provision or dispatch; caller-scoped root R
 D -> J : reconcile first under lock; replay journal (§7.1)
 D -> D : principal/key/signature/chains, quotas, leaf constructibility, digest
@@ -122,10 +126,10 @@ else launch initiated
   end
 end
 == applicable cleanup (§5.4; no success from uncertain observations) ==
-opt kept allocation
+opt ordinary kept allocation
   D -> J : allocation idle after execution finish
 end
-opt dispatch on-exit, retirement, expiry or failed provisioning
+opt ordinary dispatch on-exit, retirement, expiry or failed provisioning
   D -> J : retiring / cleaning; journal E-unbind intent if bound
   opt binding exists
     D -> B : unbind {request_id: E-unbind}
@@ -158,6 +162,9 @@ note over D,J
   Journal intent before every external effect; persist result/observation (§4).
   E-create, E-bind, E-launch, E-stop, E-unbind, E-retire are distinct;
   retries reuse their ID; root (caller,R) retained only as correlation.
+  Standing team lifecycle is bring-up-team.puml (§5.5): no allocation expiry;
+  no automatic retirement on failure, exit or authority loss.
+  Only operator-signed standing retirement/re-creation (§5.4).
   Outcome kind is separate from run state (§4.4 / §8.2).
 end note
 legend

@@ -7,13 +7,16 @@ state "agent/1 (dispatcher-owned record; helper owns OS account ledger)" as Agen
   state "retiring" as Retiring
   state "removed" as Removed
   state "failed" as Failed
-  [*] --> Provisioning : admitted provision
+  [*] --> Provisioning : admitted ordinary provision / operator-signed team bring-up
   Provisioning --> Idle : create + binding confirmed
-  Provisioning --> Retiring : provisioning failed
+  Provisioning --> Retiring : ordinary provisioning failed / operator-signed standing retirement
+  Provisioning --> Provisioning : standing failure: reconcile / await operator-signed decision
   Idle --> Active : dispatcher commits execution claim under lock
-  Active --> Idle : execution finished; kept allocation
-  Active --> Retiring : dispatch finished / allocation expired
-  Idle --> Retiring : retire / allocation expired
+  Active --> Idle : execution finished; ordinary kept / standing allocation
+  Active --> Retiring : ordinary dispatch finished / ordinary allocation expired
+  Active --> Retiring : operator-signed standing retirement
+  Idle --> Retiring : ordinary retire / ordinary allocation expired
+  Idle --> Retiring : operator-signed standing retirement
   Retiring --> Retiring : effects pending / observations unknown or contradictory
   Retiring --> Removed : applicable unbind, retire, identity cleanup confirmed
   Retiring --> Failed : failed provision; applicable cleanup confirmed
@@ -48,7 +51,11 @@ note bottom of Agent
   v0 detached supervisor / v1 daemon supervisor run as service UID;
   launcher runs as root until agent UID exec; broker service is unprivileged.
   Broker owns bindings/leases; launcher writes start receipt; helper confirms stop.
-  Failed provision unbinds if bound and retires if created.
+  Ordinary failed provision unbinds if bound and retires if created.
+  Standing designation retained; encoding unpublished (§§4.3, 16).
+  Standing: no expires_at or lifetime quota; sweep never expires it.
+  Only operator-signed retirement or re-creation; no automatic replacement.
+  Retirement / re-creation signed-record format is unpublished (§5.4).
   Keeper integration: revoke only registered one-shot identity AFTER retirement;
   standing revocation is operator-only (§14); unknown/refused revocation pending.
 end note
@@ -63,8 +70,10 @@ note bottom of Capacity
   Prelaunch checks exclude the claim's own resources.
   Claim-expiry transition details and persisted capacity-state enum
   are unspecified in spec §§7.2, 9; expiry alone is not proof of absence.
-  Sweep owns lifetimes: v0 service-only every minute; v1 internal daemon.
-  No sweep running -> allocation status says lifetimes are unenforced (§7.2).
+  Sweep owns ordinary allocation lifetimes; never expires standing allocations.
+  v0 service-only every minute; v1 internal daemon.
+  Capacity-claim expiry is distinct from allocation expiry.
+  No sweep running -> status says ordinary lifetimes are unenforced (§7.2).
 end note
 legend
   Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#43-agent-allocation-agent1 §4.3 agent/1]]

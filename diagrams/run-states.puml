@@ -17,7 +17,7 @@ Starting --> Stopping : cancel during/after launch; wait for receipt or refusal
 Running --> Stopping : exit / cancel / max_runtime
 Running --> Stopping : supervisor known absent; recovery exec.stop; outcome lost
 Stopping --> Stopping : termination missing: repeat same E-stop\nunknown / contradictory: retain state and claim
-Stopping --> Cleaning : stop / absence confirmed; record outcome\nallocation idle or retiring per policy
+Stopping --> Cleaning : stop / absence confirmed; record outcome\nordinary kept / standing idle; retirement only as authorised (§5.4)
 Cleaning --> Cleaning : pending cleanup: same effect IDs\nunknown/refused identity revocation remains pending
 Cleaning --> Terminal : applicable cleanup confirmed (§§5.4, 7.1)
 Terminal --> [*]
@@ -38,6 +38,8 @@ note left of Queued
   No direct terminal edge bypassing cleanup is asserted.
 end note
 note right of Terminal
+  Standing allocation exit does not retire it; operator-signed retirement only.
+  Execution-runtime limits remain §3.5; SH2+ standing runtime is open (R3, §16).
   Stored outcome is separate from run state:
   exit | failed | cancelled | expired | lost (§§4.4, 8.2).
   lost is an outcome, not a stored state.

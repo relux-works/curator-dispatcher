@@ -18,14 +18,22 @@ loop each allocation / execution, state by state (§7.1)
     alt request still valid
       D -> B : bind with journaled effect ID
     else invalid authority/window
-      D -> J : retire; applicable cleanup must be confirmed
+      alt ordinary allocation
+        D -> J : retire; applicable cleanup must be confirmed
+      else standing allocation
+        D -> J : retain pending; await operator-signed decision; no re-creation
+      end
     end
-  else idle; binding known absent; allocation not expired
+  else idle; binding known absent; ordinary not expired or standing
     D -> D : fresh authority checks
     alt authority valid
       D -> B : rebind
     else authority gone
-      D -> J : retire
+      alt ordinary allocation
+        D -> J : retire
+      else standing allocation
+        D -> J : no forward execution; await operator-signed decision; no retirement
+      end
     end
   else claimed; no supervisor registration
     D -> J : mark execution claim absent; no later launch
@@ -37,7 +45,7 @@ loop each allocation / execution, state by state (§7.1)
     D -> J : record lost after confirmation
   else stopping; termination receipt missing
     D -> H : repeat exec.stop with same effect ID
-  else retiring / cleaning; pending effects
+  else retiring / cleaning; pending authorised effects
     D -> B : repeat applicable unbind with same effect ID
     D -> H : retire only after unbind confirmed; same retire effect ID
     D -> J : applicable one-shot identity cleanup after retirement (§14)\nterminal only after all required confirmations
@@ -46,6 +54,9 @@ end
 note over D,J
   v0 invocation, v1 startup/periodic, explicit reconcile (§7.1).
   v0 internal service-only sweep every minute; v1 daemon internal (§7.2).
+  Standing: no expires_at or lifetime quota; sweep never expires it.
+  Standing retirement/re-creation requires operator-signed record (§5.4).
+  An absent account never authorises automatic standing re-creation.
   Intent is journaled before every external effect (§4.1).
   Refused cleanup stays pending; unknown is never known absent (§4.6).
   Keeper API and broker service UID spelling are unspecified in spec §§14, 3.1.

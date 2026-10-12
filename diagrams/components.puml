@@ -30,7 +30,7 @@ SUP --> L : launch.start; distinct E-launch
 L --> E : receipt while root; reset; drop GID/UID\nimmutable plan FD3; no broker FD
 E --> B : own connection; lease\ncaller dependency rechecked
 CORE ..> SH : later backend; ticket + fenced operation IDs
-SH ..> L : host-role launch with valid unused ticket
+SH ..> L : present ticket; launcher redeems once for authenticated host\nuser-manager shared lock + journal (§12)
 SH ..> SR : session input admission / metadata
 SR ..> B : later qualified consumer; own connection
 CORE ..> K : one-shot registration / separate revocation\nonly after confirmed retirement
@@ -39,7 +39,10 @@ note bottom of CORE
   Capacity: v0 refuses; v1 queues and rechecks at dequeue.
   Unknown/contradictory observations keep records pending:
   never relaunch, release capacity or declare cleanup successful.
-  Provision failure: unbind if bound, retire if created; confirm cleanup.
+  Ordinary provision failure: unbind if bound, retire if created; confirm cleanup.
+  Standing: no expiry/lifetime quota; sweep never expires it.
+  Standing retirement/re-creation only with operator-signed record.
+  Operator-signed team/1 bring-up is specified-but-unpublished (§5.5).
   Root caller request ID is correlation, not a shared receiver key.
 end note
 note right of SH
@@ -51,6 +54,8 @@ end note
 note right of E
   §5.3 intake / Decision 0021 amendment and credential qualification
   gate activation. Caller composes; executor verifies/executes only.
+  Orchestrator composes children under its own agent account/home config (§5.2).
+  Child profile/environment access and grant constraints remain open (§16).
   Executor CLI/plan schema are unspecified in spec §5.3.
 end note
 note right of K

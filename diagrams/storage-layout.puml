@@ -5,7 +5,7 @@ component "swarma-dispatcher process\nv0 command / v1 daemon\nservice UID swarma
 component "Supervisor\nv0 detached / v1 in daemon\nsame service UID" as S
 folder "Service-private state root (dispatcher-owned)\n/opt/swarma/services/swarma-dispatcher/state\nmode 0700 (§4.1)" as ROOT {
   artifact "Immutable input/1\ncaller principal + root request_id, canonical request,\nplan bytes, full caller chain, digests (§4.2)" as INPUT
-  artifact "agent/1 allocations\nuid + generation, binding / leaf / caller chain IDs,\nregistered caller key, lifetime, cleanup (§4.3)" as AG
+  artifact "agent/1 allocations\nuid + generation, binding / leaf / caller chain IDs,\nregistered caller key, ordinary expiry / standing designation, cleanup (§4.3)" as AG
   artifact "run/1 executions\nowner + input, plan digest, execution claim + epoch,\nsupervisor/start/termination evidence, outcome (§§4.4, 6)" as RUN
   artifact "Effect table\nid, component, operation, intent, result, observation (§4.5)" as EFFECT
   artifact "Journal\nappend + flush before external effect; replay at startup" as JOURNAL
@@ -33,7 +33,9 @@ note bottom of ROOT
   Input is written once before acceptance; later queue/recovery reads it (§4.2).
   Unknown/contradictory evidence keeps records pending: no relaunch,
   no capacity release, no successful cleanup; retry observations (§§4.6, 7.1).
-  Unbind then account retirement; applicable one-shot identity revocation
+  Standing: no expires_at or lifetime quota; designation encoding unpublished.
+  Only operator-signed retirement/re-creation (§§4.3, 5.4); never sweep expiry.
+  Unbind then authorised account retirement; applicable one-shot identity revocation
   is a separate confirmed effect after retirement (§§5.4, 14).
   Subfile names, per-file modes/groups and retention/deletion rules
   are unspecified in spec §§4.1, 6, 13; labels are logical records, not paths.

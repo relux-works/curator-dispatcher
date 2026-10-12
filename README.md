@@ -17,9 +17,13 @@ The one-shot executor is `curator-run` from `curator-agent-launcher`, in a versi
 - A root request ID is scoped to the caller and kept for correlation; create, bind, launch, stop, unbind and retire each use a distinct durable effect ID (§4.5). Repeating a request returns the same records; retrying an effect reuses its ID.
 - A caller gets only what its own grant allows; the dispatcher narrows it further for the agent.
 - Capacity closures refuse in v0 and queue in v1; quota and authority failures refuse in both versions and never queue.
-- Mutating requests sign exactly `swarma-dispatcher request/1`, newline, then CCJ-1 bytes without `auth` (§3.3). The repository-based wire naming decision needs no migration because nothing has shipped; transport labels are distinct from signed domains.
+- Mutating `dispatch-op/1` requests sign exactly `swarma-dispatcher request/1`, newline, then CCJ-1 bytes without `auth` (§3.3). The repository-based wire naming decision needs no migration because nothing has shipped; transport labels are distinct from signed domains.
 - Accounting, admission and cleanup belong here; SH2+ holding moves to the session host module's runner under the agent account after the backend gate.
 - The dispatcher, board and goals are optional to direct Curator launches. The session host must work without a board, goals, an orchestrator or its toolchain.
+- Standing team allocations have no expiry or lifetime quota. Only the operator retires or re-creates them with a signed record; the sweep never expires them (§§3.5, 5.4, 7.2). Ordinary allocations keep the 24 h default and 7-day maximum. Standing-session execution runtime remains an open question (§16); execution limits are unchanged.
+- The operator-only bring-up-team operation creates or reconciles one standing allocation per role from an operator-signed description, idempotently. Its request object `swarma-dispatcher team/1` is specified-but-unpublished (§5.5).
+- An orchestrator composes child plans from its own Curator configuration in its agent home; the child executor only verifies them. Child profile/environment access and narrowed-grant constraints remain open (§§5.2, 16).
+- For the gated SH2+ backend, the host presents the dispatcher-issued ticket; the user-manager launcher redeems it once for the authenticated host under the module's shared lock and journal (§12).
 - With keeper integration enabled, the dispatcher revokes only identities it registered with the one-shot flag, in a separate operation after account retirement. Standing identities remain operator-only, with a signed revocation record (§14).
 - The v0 timer invokes `swarma-dispatcher sweep` directly as the service account every minute; this is an internal maintenance entry, outside the public no-argument sudo request path. The v1 daemon sweeps internally (§7.2).
 - After any crash, the dispatcher reconciles its records with the helper, the broker and the process table before it accepts new work.
@@ -34,7 +38,7 @@ These PlantUML sources describe the draft v0/v1 design and label later SH2+ gate
 | M-DP2 | [Run states](diagrams/run-states.puml), [agent and claim states](diagrams/agent-claim-states.puml) | [Records](spec/dispatcher.md#4-records-and-state), [capacity](spec/dispatcher.md#9-capacity) |
 | M-DP3 | [Storage layout](diagrams/storage-layout.puml) | [State directory](spec/dispatcher.md#41-state-directory), [socket](spec/dispatcher.md#83-v1-socket-dispatch1) |
 
-Companion views: [reconciliation](diagrams/reconcile.puml) ([§7.1](spec/dispatcher.md#71-reconciliation)) and [v1 daemon / gated SH2+ backend](diagrams/v1-daemon.puml) ([§12](spec/dispatcher.md#12-session-host-backend-later-activation-gate)).
+Companion views: [bring up team](diagrams/bring-up-team.puml) ([§5.5](spec/dispatcher.md#55-bring-up-team-specified-but-unpublished)), [reconciliation](diagrams/reconcile.puml) ([§7.1](spec/dispatcher.md#71-reconciliation)) and [v1 daemon / gated SH2+ backend](diagrams/v1-daemon.puml) ([§12](spec/dispatcher.md#12-session-host-backend-later-activation-gate)).
 
 ## License
 

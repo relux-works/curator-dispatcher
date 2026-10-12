@@ -46,6 +46,7 @@ alt SH2+ backend gates published and activated (§§12, 14)
     alt wrong host principal, reused ticket, wrong generation/executor/plan, revoked claim
       L --> SH : refuse launch
     else valid unused ticket for dispatcher-owned generation
+      L -> L : user-manager shared lock + journal: redeem once for authenticated host
       L -> L : write start receipt while root
       L -> SR : reset; clear groups; set GID/UID; exec
       SR -> B : own broker connection; qualified lease and renewal
@@ -55,7 +56,9 @@ alt SH2+ backend gates published and activated (§§12, 14)
   note over D,SR
     Ticket signature/version/canonical bytes and host-role schema
     are unspecified in spec §§12, 16; backend remains disabled.
+    Dispatcher only issues ticket; host presents it; user-manager launcher redeems.
     Ownership handoffs must be specified before activation.
+    Standing-session execution runtime is open: R3 proposal in §16; §3.5 unchanged.
     SH1 behavior is unspecified in spec §12; no SH1 migration is asserted.
     Log handoff is unspecified in spec §16 (open question 5).
   end note
@@ -73,7 +76,9 @@ opt stop / cancel / recovery for an execution that launched
 end
 D --> C : events / current execution record; outcome separate from state
 note over D
-  Internal sweep; distinct downstream effect IDs, retries reuse IDs.
+  Internal sweep never expires standing allocations; no lifetime quota.
+  Standing retirement/re-creation is operator-only with signed record (§5.4).
+  Distinct downstream effect IDs, retries reuse IDs.
   v0 -> v1: stop admission, exclusive state, check/migrate, drain v0 supervisors,
   reconcile, switch recorded mode, ready. Rollback reverses the steps (§11).
   Board/host clients never embed broker clients (§5.3).

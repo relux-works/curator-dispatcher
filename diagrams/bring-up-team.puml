@@ -1,0 +1,60 @@
+@startuml bring-up-team
+title Companion to M-DP1: operator-signed standing team bring-up (specified-but-unpublished)
+actor "Operator" as O
+participant "Dispatcher core\nservice UID swarma-dispatcher" as D
+database "Dispatcher-owned input, agent/1,\neffects and journal" as J
+participant "swarma-user-manager\nroot; account ledger" as H
+participant "Credential broker\nunprivileged; bindings and grants" as B
+O -> D : operator-signed standing team description\nswarma-dispatcher team/1 (unpublished)
+D -> D : authenticate operator; verify signed description; check authority, quotas and leaf constructibility
+alt not operator or absent / invalid operator signature
+  break no team effect
+    D --> O : refuse; agent.spawn is insufficient
+  end
+else operator-signed description admitted
+  D -> J : lock; retain signed input and per-role allocation/effect records
+end
+loop each described standing role: label, profile, harness, accounts, capabilities
+  D -> J : reconcile existing allocation and journaled effects (§§4.6, 7.1)
+  alt observation unknown or contradictory
+    D -> J : retain pending; retry observation; no duplicate effect or allocation
+  else existing standing allocation
+    D -> D : reconcile authorised effects with fresh authority checks
+    D -> J : retain allocation; no automatic retirement / re-creation or relaunch
+  else initial allocation creation admitted
+    D -> J : provisioning; standing designation; no expires_at or lifetime quota
+    D -> J : journal distinct per-allocation create effect intent (§4.5)
+    D -> H : user.create with recorded create effect ID
+    alt create confirmed present
+      H --> D : uid, generation
+      opt helper v1
+        D -> H : fw.apply with its own journaled effect ID
+      end
+      D -> D : construct narrowed leaf; keep caller dependency (§3.4)
+      D -> J : journal distinct bind effect intent
+      D -> B : bind with recorded bind effect ID
+      alt bind confirmed
+        B --> D : binding_id
+        D -> J : allocation idle; one standing allocation for this role
+      else bind refused / observation unknown or contradictory
+        D -> J : provisioning pending; observe by effect ID; no automatic retirement
+      end
+    else create refused / observation unknown or contradictory
+      D -> J : provisioning pending; observe ledger; no duplicate creation
+    end
+  end
+end
+D --> O : current per-role allocation / reconciliation result (format unpublished)
+note over O,J
+  Repeated bring-up and recovery reuse recorded effects: one logical bring-up effect / allocation per role.
+  Retirement / re-creation requires the operator's signed record (§5.4).
+  Sweep never expires standing allocations; execution start is separate (§5.3).
+  Signature grammar, remaining fields, transport, role matching and change handling,
+  standing designation encoding and signed-record format are unspecified (§16).
+  This view does not publish request members, refusal codes or result values.
+end note
+legend
+  Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#55-bring-up-team-specified-but-unpublished §5.5 bring up team]]
+  §§3.5, 4.3, 4.5–4.6, 5.4, 7, 16
+endlegend
+@enduml
