@@ -14,7 +14,7 @@ Queued --> Starting : authority/window/quota + all gates rechecked; fresh revoca
 Queued --> Queued : temporary closure / operator drain park
 Starting --> Running : supervisor registered; launcher receipt recorded
 Starting --> Stopping : cancel during/after launch; wait for receipt or refusal
-Running --> Stopping : exit / explicit stop (cancel) / operator action / incident hard stop
+Running --> Stopping : exit / explicit stop (cancel / authorised host_stop) / operator action / incident hard stop
 Running --> Stopping : ordinary execution only: max_runtime deadline elapsed
 Running --> Stopping : supervisor known absent; recovery exec.stop; outcome lost
 Stopping --> Stopping : termination missing: repeat same E-stop\nunknown / contradictory: retain state and claim
@@ -26,7 +26,9 @@ note right of Starting
   Owner: dispatcher service UID swarma-dispatcher.
   Daemon-owned supervisor, same UID.
   Launcher is root until exec under agent UID.
-  Cancel before launch marks claim absent; launcher never called.
+  R-LOCK: cancel before issue marks absent; launcher never called.
+  After issue, mark in-flight cancel intent, resolve same receipt then stop.
+  R-FATE: user-manager §7 owns unit/fate table; old daemon-instance writes fenced.
   Unknown start: wait for receipt/answer, never launch again.
   Exact failed-launch/pre-launch-cancel run-state edges are
   unspecified in spec §5.3; no extra stored state is invented.
@@ -48,6 +50,11 @@ note right of Terminal
   exit | failed | cancelled | expired | lost (§§4.4, 8.2).
   lost is an outcome, not a stored state.
   Exact terminal-state/outcome mapping is unspecified in spec §4.4.
+  Host successor: lifecycle consent, same session/op replay -> same execution,
+  previous claim absent, active owner ancestry and fresh start verdict; no reset ordinary budget.
+  Host-requested stop recorded distinctly from owner cancel; no new outcome value.
+  R-OUTCOME: pending E-stop continues identical arguments; terminal replay never signals.
+  Stop scope is account-wide under latest-receipt fence, not session/time window.
   Dispatcher owns run records, claims, effects, receipts and logs;
   helper owns account ledger / termination evidence;
   launcher writes start receipt; broker owns bindings/leases.

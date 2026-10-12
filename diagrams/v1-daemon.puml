@@ -7,16 +7,20 @@ participant "swarma-user-launcher\nroot until agent UID drop; receipt writer" as
 participant "swarma-session-runner\nSH2+ agent UID\nPTY/app-server and renewal" as SR
 participant "Credential broker\nunprivileged; binding / grant / lease owner" as B
 participant "swarma-user-manager\nroot; account ledger / stop evidence" as H
-D -> D : closed admission; recover/reconcile; publish readiness
+D -> D : closed admission; ownership/schema/replay/authentication -> controls\nclassify/account/confine unresolved effects -> forward readiness
 C -> D : dispatch/1 connect; peer UID; verify server UID; hello; signed request
-alt daemon absent/unready or authentication / permission / version / malformed response failure
+alt daemon absent or authentication / permission / version / malformed response failure
   break transport refusal
     C -> C : refuse; no command fallback
   end
 else ambiguous reply
   C -> D : repeat same request_id and signature
 end
-D -> D : prepare principal/signature/chains, quota, constructibility
+opt forward admission closed but valid control surface
+  C -> D : authorised status/list/reconcile or current-execution stop
+  D --> C : observations/stop intent; retained unknown claims; no launch grant needed
+end
+D -> D : forward request requires readiness; prepare principal/signature/chains, quota\nmachine-owned network binding pin; caller text checked, never authority
 D -> B : revocation.check exact chains, context prepare
 B --> D : not_revoked / revoked / unavailable + revocation sequence
 alt quota / authority failure or revoked / unavailable
@@ -55,37 +59,53 @@ note over D
   Standing max_runtime refusal-code mapping is unpublished (§16, question 8).
 end note
 alt SH2+ permit / ownership / crash-order gates published and qualified (§§12, 14)
+  C -> D : owner-signed start; session lifecycle authorisation if successors allowed
+  D -> D : retain authorisation + immutable plan in input/session record
   SH -> SH : persist session intent and closed delivery fence
+  D -> D : recheck owner start authority/lifetime/runtime policy
   D -> B : fresh revocation.check exact chains, context start
-  alt revoked / unavailable or start authority invalid
-    break no host permit or launch
-      D --> SH : refuse
+  B --> D : not_revoked / revoked / unavailable
+  alt owner admission invalid or revoked / unavailable
+    break no admitted permit or physical start
+      D --> C : refuse
     end
   end
-  D -> D : admitted session-host start; durable host admission permit
-  note over D,SH
-    Permit binds logical_session_id, execution_id, controller_epoch, op_id.
-    Reference/authentication encoding is unpublished; no extra wire field is asserted.
+  D -> D : admit owner start; durable session-scoped host admission permit
+  note over C,SH
+    Permit is for one logical_session_id; one-start request admits no successor.
+    Owner chain remains binding dependency; host acquires no spawn/lease chain.
+    Lifecycle member / permit reference / auth encoding unpublished (§16).
   end note
   SH -> D : host_start (logical_session_id, execution_id, controller_epoch, op_id)
-  D -> D : authenticate configured host service principal; verify bound permit / fence
-  D -> D : recheck original admitted caller authority
+  D -> D : authenticate configured host; verify session permit + per-use fence\nlocal lock + in-flight marker; release for every receiver call
+  alt successor physical start
+    D -> D : look up durable (logical_session_id, op_id) replay first
+    opt exact recorded replay
+      break return same successor/evidence; no physical start
+        D --> SH : current recorded successor; never create another
+      end
+    end
+    D -> D : require owner lifecycle consent; unchanged stored plan, no host plan bytes
+    D -> D : previous claim confirmed absent or agent_busy; no ordinary lifetime/budget reset
+    D -> D : retain replay identity with distinct successor record/effects
+  end
+  D -> D : recheck active original owner principal, signature, chain/window; current fences
   D -> B : fresh revocation.check exact chains, context start
   B --> D : not_revoked / revoked / unavailable + sequence
   alt revoked / unavailable or original authority invalid
     break no physical start
-      D --> SH : refuse; permit is never a future-start grant
+      D --> SH : refuse; permit never replaces owner consent/current authority
     end
   end
   alt wrong principal / mismatched permit values / stale epoch / withdrawn permit
     break no launcher call
       D --> SH : refuse; live pid is not controller authority
     end
-  else fence changed or cancelled before call
-    D -> D : withdraw permit or reconcile; cancel claim prevents call
+  else fence changed or cancelled before call issue
+    D -> D : durable withdrawal/cancel intent under local lock; prevent call
   else physical call admitted
-    D -> D : claim; journal original launch effect
-    D -> L : launch.start through existing dispatcher-owned effect / receipt path
+    D -> D : own execution_id/controller_epoch/op_id claim + fence\nlocal lock: journal distinct E-launch and in-flight marker; unlock
+    D -> L : launch.start; no state lock held; dispatcher-owned effect / root receipt path
     alt root call ambiguous
       D -> D : resolve same effect and root receipt; never launch twice
       opt stop required after resolution
@@ -93,6 +113,7 @@ alt SH2+ permit / ownership / crash-order gates published and qualified (§§12,
         H --> D : confirmed execution absence, or unknown/refused stays pending
       end
     else root call accepted
+      D -> D : local lock: revalidate result/fences; stale result is historical evidence only
       L -> L : user-manager §7 R-FD3 lifecycle; root receipt before UID/GID drop
       L -> SR : approved runner; only 0-2 + staged immutable read-only FD3
       SR -> SH : fresh authenticated channel; current-epoch registration
@@ -101,14 +122,28 @@ alt SH2+ permit / ownership / crash-order gates published and qualified (§§12,
       SH -> SH : validate current epoch/fence; permit delivery only after ready registration
     end
   end
-  opt host failure or fence change spanning physical start
-    D -> D : retain claim / closed delivery fence; withdraw permit or reconcile
+  opt host failure, mid-call cancel or fence change spanning physical start
+    SH -> D : request durable withdrawal (encoding unpublished); no host fence lock held
+    D -> D : record cancel intent promptly; retain claim + closed delivery
+    D -> D : late result revalidated against record/daemon/controller fences
+    D -> H : resolve same launch/receipt then journaled E-stop if required
+  end
+  opt configured host requests stop of execution under permit
+    SH -> D : host_stop (request/reference/auth encoding unpublished)
+    D -> D : current permitted execution only; durably host-requested, distinct from owner cancel
+    D -> H : E-stop / exec.stop; latest-receipt fence; account-wide scope
+    H --> D : confirmed absence or unfinished/unknown evidence retaining claims
+    note over D,SH : host_stop confers no start authority; pending E-stop continues identical arguments.
   end
   note over D,SR
     Dispatcher alone invokes the root launcher; host has no privileged start role.
-    Permit/authentication, fence withdrawal, crash/receipt ordering and handoffs
+    Lifecycle authorisation/budget, session permit, host_stop authentication,
+    fence withdrawal, crash/receipt ordering and handoffs
     need joint publication and qualification; backend remains gated (§§12, 16).
-    Controller-only re-adoption keeps execution_id; replacement uses a new one.
+    Controller-only re-adoption keeps execution_id and needs no permit action.
+    Replacement uses new execution_id only under consent, prior absence and fresh checks.
+    Retired one-shot orchestrator owner -> no restart; same session/op never duplicates successor.
+    User-manager §7 R-FATE table defines survival/maintenance affected sets; no implicit adoption.
     Fresh runner checks exclusive native-session lock; native resume retains §12 rules.
     Log handoff remains unpublished (§16, question 5).
   end note
@@ -122,16 +157,25 @@ else default supervisor backend
   end
 end
 opt explicit stop / operator maintenance / exit / incident hard stop / recovery; runtime only for ordinary executions
-  D -> H : exec.stop (journaled E-stop; own generation/execution)
+  D -> H : exec.stop (journaled E-stop; current own generation/execution)\nTERM/grace/KILL UID + per-user domain; quiet-period absence; no state lock held
   alt termination observation unknown / contradictory or stop refused
     D -> D : retain state and capacity; same-effect recovery; never relaunch
   else termination confirmed
-    H --> D : no execution process remains
+    H --> D : quiet-period account-wide absence confirmed
     D -> D : record outcome; applicable cleanup; terminal after confirmation
   end
 end
 D --> C : current execution record; events only behind later capability
 note over D
+  R-LOCK wait graph: state lock -> local journal/records; unlocked host -> dispatcher,
+  unlocked dispatcher -> helper/launcher/broker. Bounded per-record markers/I/O; old writers fenced.
+  Unfinished admitted stop is pending under receiver R-OUTCOME, not terminal refusal.
+  R-GEN: external restore fence + independent coverage/reverse inventory; orphan decisions signed.
+  R-REBIND: authorised renewal on same allocation, old tombstone; no wider scope/account recreation.
+  R-TIME: watermark max expiry / min not_before; trusted advances only,
+  expiry deletion also needs boot-inclusive elapsed lifetime; explicit stop stays reachable.
+  Host reboot requester remains open; owner lifecycle consent bounds either candidate.
+  Workplace backend is separate/gated: service-owned swarma-rb-exec, enforced helper v1.
   Internal sweep never expires standing allocations or stops them for runtime.
   Standing retirement/re-creation is operator-only with signed record (§5.4).
   Maintenance: bounded authorized stop attempt; confirmed absence/reconciliation

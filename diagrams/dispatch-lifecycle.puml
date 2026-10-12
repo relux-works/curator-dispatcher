@@ -14,10 +14,10 @@ note right of C
   Orchestrator caller: own agent account and Curator home configuration (§5.2).
   Child profile/environment access and narrowed-grant constraints are open (§16).
 end note
-D -> J : startup recovery complete; publish ready before admission
+D -> J : establish controls; classify/account for forward readiness (§7.1)
 C -> D : dispatch/1 signed provision or dispatch; caller-scoped root R
-D -> J : reconcile under lock (§7.1)
-D -> D : principal/key/signature/chains, quotas, leaf constructibility, digest
+D -> J : local lock: snapshot/intent + per-record marker; unlock for reconciliation calls (§4.1)
+D -> D : principal/key/signature/chains, quotas, constructibility, digest\nresolve machine-owned network binding; check caller text; pin ref/digest
 D -> B : revocation.check exact chains, context prepare
 B --> D : not_revoked / revoked / unavailable + revocation sequence
 alt prepare refused, revoked or unavailable
@@ -63,7 +63,7 @@ else prepare accepted
     end
   end
   opt helper v1
-    D -> H : fw.apply (its own journaled effect)
+    D -> H : fw.apply admitted pin; served-policy digest check; drift refuses\nits own journaled effect; no state lock held
   end
   D -> D : leaf agent:generation = request intersect caller intersect own grant
   D -> J : E-bind intent; caller chain + intersection dependency
@@ -75,7 +75,8 @@ else prepare accepted
     break recover failed / uncertain provisioning
       D -> J : known refusal -> retiring; unknown -> observe by E-bind first
       note over D,B
-        Effect absence + fresh authority/verdict may resume only the same admitted bind (§7.1).
+        R-OUTCOME: unfinished admitted bind stays pending; authority-creating retry is fresh.
+        Effect absence never authorizes a new bind (§7.1).
         No automatic new effect; standing failures stay pending for operator decision.
         Unbind if bound, retire if created, each confirmed before failed (§5.1).
         Unknown is never treated as absent (§4.6).
@@ -106,7 +107,7 @@ alt revoked / unavailable
 end
 D -> J : under lock claim {execution_id, epoch}; allocation running
 D -> S : start supervisor
-S -> J : durable process identity registration and acknowledgement
+S -> J : durable registration/acknowledgement; current daemon-instance epoch on every write
 D -> J : journal E-launch intent
 alt cancel before launch
   D -> J : serialise cancel with claim; mark absent; never call launcher
@@ -134,7 +135,7 @@ else launch initiated
     E -> B : own connection; lease (caller dependency rechecked)
     E -> E : qualified injection; exec harness
     alt exit, explicit stop (cancel), operator action, incident hard stop or ordinary max_runtime deadline
-      S -> H : exec.stop {request_id: E-stop, generation, execution_id}
+      S -> H : exec.stop {request_id: E-stop, generation, execution_id}\nlatest-receipt fence; TERM/grace/KILL UID + per-user domain; quiet-period absence
     else supervisor known absent
       D -> H : recovery exec.stop with same E-stop; record lost after confirmation
     end
@@ -142,7 +143,7 @@ else launch initiated
       break stopping pending
         D -> J : stopping pending; retry E-stop; retain capacity; no cleanup success
       end
-    else no process of execution remains
+    else quiet-period account-wide absence confirmed
       H --> D : confirmed termination receipt
       D -> J : outcome; capacity released after confirmed end/absence
     end
@@ -152,7 +153,7 @@ end
 opt ordinary kept allocation
   D -> J : allocation idle after execution finish
 end
-opt ordinary dispatch on-exit, retirement, expiry or failed provisioning
+opt ordinary dispatch on-exit, retirement, qualified expiry or failed provisioning
   D -> J : retiring / cleaning; journal E-unbind intent if bound
   opt binding exists
     D -> B : unbind {request_id: E-unbind}
@@ -167,7 +168,7 @@ opt ordinary dispatch on-exit, retirement, expiry or failed provisioning
   opt account was created
     D -> J : journal E-retire intent
     D -> H : user.retire {request_id: E-retire, home: delete}
-    note over D,H : User-manager retirement: quiesce, declared-key cleanup, home deletion; explicit operator retention separate.
+    note over D,H : Local retirement only; bounded deletion batches stay pending under E-retire until full confirmation.
     alt retirement confirmed
       H --> D : confirmation
     else unknown / refused
@@ -183,6 +184,17 @@ opt ordinary dispatch on-exit, retirement, expiry or failed provisioning
   D -> J : terminal only after applicable effects confirmed; unknown/refused cleanup stays pending
 end
 note over D,J
+  R-LOCK: lock intent/in-flight -> unlock cross-service call -> lock/revalidate result.
+  Wait graph: state lock -> local journal/records; unlocked workers -> helper/launcher/broker.
+  Cancel before issue prevents call; after issue marks cancel requested, retains claim,
+  resolves same effect/receipt then stops. Late stale results never reopen delivery/admission.
+  Bounded per-record work leaves unrelated recovery controls reachable.
+  R-OUTCOME receiver tables map unfinished admitted work to pending (six R-OBS states).
+  Same E-stop/arguments progresses after processes_remain; completed replay never signals.
+  R-FATE: user-manager §7 defines exact process fate/affected sets; old writers fenced.
+  F-16: cross-account workspace is standalone with private .git/config/hooks, no backlink.
+  Expiry cleanup requires wall expiry + trusted time + boot-inclusive elapsed lifetime.
+  Direct operator retirement leaves unconfirmed E-unbind as durable obligation.
   Journal intent before every external effect; persist result/observation (§4).
   E-create, E-bind, E-launch, E-stop, E-unbind, E-retire are distinct;
   retries reuse their ID; root (caller,R) retained only as correlation.

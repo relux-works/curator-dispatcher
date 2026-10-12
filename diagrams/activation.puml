@@ -6,22 +6,23 @@ database "Durable state\njournal, effects, claims, maintenance progress" as J
 participant "swarma-user-manager\nroot; exec.stop and absence evidence" as H
 participant "Service installer / manager" as I
 == initial activation, slice 0 ==
-I -> D : install/start Unix-socket service; admission closed
+I -> D : authenticated/operator-controlled time source; install/start; admission closed
 D -> J : exclusive state; validate compatibility; replay journal
-D -> D : reconcile effects, receipts and process evidence
-alt recovery unresolved / unknown / contradictory
-  D -> D : remain unready; refuse admission without fallback
-else recovery resolved
-  D -> D : publish readiness; open admission
+D -> D : valid auth/indexes -> recovery controls reachable
+D -> D : classify records; reconcile with unlocked per-record calls
+alt unbounded identity/accounting/shared-state uncertainty or global barrier
+  D -> D : forward admission closed; authorised controls stay reachable
+else complete accounting and unresolved effects confined to retained claims/identities
+  D -> D : forward ready for unrelated sound work; uncertain records blocked
 end
 == bounded maintenance attempt ==
 O -> D : explicit authorized maintenance with selected executions
 note over O,D : Authorization, deadline/progress and restart-review encoding remain unpublished (§16).
 D -> D : close new admission
 D -> J : durable inventory and selected-stop intent
-loop selected affected executions, within maintenance attempt deadline
-  D -> J : journal stop intent with stable effect ID
-  D -> H : exec.stop through dispatcher's authority; generation + execution identity
+loop selected affected executions from user-manager §7 R-FATE table; bounded deadline
+  D -> J : local lock: journal stop + in-flight marker; unlock
+  D -> H : exec.stop through dispatcher authority; same E-stop/arguments\ncurrent-execution fence + account-wide scope; no state lock held
   alt stop refused / unknown or process absence unconfirmed
     D -> J : preserve unresolved stop and claim; defer maintenance
   else confirmed no execution process remains
@@ -38,10 +39,10 @@ else all affected executions confirmed absent and reconciled
   I -> I : admitted backend-mode / mutable-state migration / binary swap
   I -> D : start selected compatible service with admission closed
   D -> J : recover/reconcile; retain all later durable records
-  alt recovery / compatibility unresolved
+  alt compatibility / accounting / confinement unresolved or global barrier
     D -> D : remain closed; rollback uses same absence and compatibility fences
-  else recovery resolved
-    D -> D : publish readiness; open admission
+  else all records classified and accounting/confined unknowns safe
+    D -> D : controls reachable; forward ready for sound records
   end
 end
 opt operator-reviewed restart
@@ -50,6 +51,13 @@ opt operator-reviewed restart
   D -> D : start only admitted rows; unsupported rows remain visibly stopped
 end
 note over D,J
+  Authorised status/observe/reconcile/stop reachable after control prerequisites.
+  R-LOCK: cross-service workers hold no state lock; bounded per-record markers.
+  F-17: declared restore closes admission before bytes visible; external mark,
+  ledger epoch floor, independent coverage and reverse accounts/bindings/receipts inventory.
+  Orphans require signed operator decision; no restored snapshot certifies absence.
+  R-TIME: trusted watermark max expiry / min not_before; monotonic lifetime for deletion.
+  V1 deny-all service-profile row/resolver evidence verified at start/schedule (§13).
   Maintenance deadline bounds the attempt, never standing execution lifetime.
   No standing retirement/identity revocation, automatic expiry or live adoption.
   Queue drain alone never stops executions. No snapshot rollback repair.

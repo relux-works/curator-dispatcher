@@ -1,19 +1,38 @@
 @startuml reconcile
+' Revision 2 (2026-10-12): distinguish admitted pending stop/retire continuation from observation-only holds.
 title Companion to M-DP1 / M-DP2: service slices reconciliation (draft)
 participant "Dispatcher core\nservice UID swarma-dispatcher" as D
 database "Dispatcher-owned journal, effects,\ninput/agent/run records and claims" as J
 participant "swarma-user-manager\nroot; account ledger / stop evidence" as H
 participant "Credential broker\nunprivileged; binding / grant / lease owner" as B
 participant "Process evidence\nsupervisor service UID / executor agent UID" as P
-D -> J : lock; replay journal; list non-terminal records
-loop each allocation / execution, state by state (§7.1)
+D -> J : local lock: exclusive ownership/schema/replay; classify records; release lock
+D -> D : publish valid recovery/control surface; forward admission separately gated
+opt declared state loss / restore (§11.1)
+  D -> J : external restore fence precedes visible restored bytes; coverage unavailable
+  D -> H : reverse inventory created_by dispatcher accounts + surviving receipts
+  D -> B : reverse inventory own bindings / tombstones
+  D -> J : orphans retain identity/accounting; signed operator decision required
+  D -> D : reopen only with independent coverage + external fence reconciliation
+end
+loop bounded per-record allocation / execution work (§7.1)
+  D -> J : local lock: snapshot versions, intent and in-flight marker; unlock for calls
   D -> H : effect.observe original request_id / operation / canonical argument digest
   H --> D : one of six states; recorded includes result + current target state
   D -> H : observe generation and qualified start/termination receipts
-  D -> B : effect.observe bind/unbind; original request_id / operation / digest
+  D -> B : effect.observe bind/unbind/binding replacement; original request_id / operation / digest
   B --> D : one of six states; unbind removal/tombstone evidence
   D -> P : observe supervisor registration / execution identity
-  alt any observation unknown or contradictory
+  D -> J : local lock: revalidate record/daemon/controller fences; record observations; unlock
+  alt relevant receiver observation unavailable or contradictory; required identity/fence evidence unsound
+    D -> J : retain state and capacity; retry observation later\nnever relaunch or declare cleanup successful
+  else stopping; observed pending for admitted exec.stop (including processes_remain)
+    D -> H : continue original E-stop with identical canonical arguments\nrevalidate generation/current-execution and latest-receipt fences
+    D -> J : retain claims; no absence or success until confirmed
+  else retiring / cleaning; observed pending for admitted user.retire
+    D -> H : continue original E-retire with identical canonical arguments\nrevalidate generation/current-execution fences; ordinary unbind already confirmed
+    D -> J : retain UID/quota reservations; no removed state before full confirmation
+  else other observation unknown
     D -> J : retain state and capacity; retry observation later\nnever relaunch or declare cleanup successful
   else provisioning; create effect unknown before query
     D -> J : apply R-OBS; rolled_back/not_recorded never automatic new create
@@ -27,7 +46,7 @@ loop each allocation / execution, state by state (§7.1)
       end
     else invalid authority/window
       alt ordinary allocation
-        D -> J : retire; applicable cleanup must be confirmed
+        D -> J : retire only under §5.4; expiry needs trusted elapsed gate; confirm cleanup
       else standing allocation
         D -> J : retain pending; await operator-signed decision; no re-creation
       end
@@ -36,10 +55,10 @@ loop each allocation / execution, state by state (§7.1)
     D -> D : fresh explicit authority needed for any new bind
     D -> B : revocation.check exact chains, context prepare
     alt authority valid and not_revoked
-      D -> B : bind only under explicit fresh admission; no automatic new effect from absence
+      D -> B : E-rebind only with explicit renewal consent/current chains\nno account recreation; binding replacement + old tombstone
     else authority gone / revoked / unavailable
       alt ordinary allocation
-        D -> J : retire
+        D -> J : retire only under §5.4; expiry needs trusted elapsed gate
       else standing allocation
         D -> J : no forward execution; await operator-signed decision; no retirement
       end
@@ -50,18 +69,32 @@ loop each allocation / execution, state by state (§7.1)
     D -> J : wait for receipt/launcher answer; cancel also waits; never relaunch
   else started; supervisor known absent
     D -> H : exec.stop {same E-stop, generation, execution_id}
-    H --> D : termination receipt only after no process remains
+    H --> D : termination receipt only after quiet-period account-wide absence
     D -> J : record lost after confirmation
-  else stopping; termination receipt missing
-    D -> H : repeat exec.stop with same effect ID
-  else retiring / cleaning; pending authorized effects with known observations
+  else stopping; receiver recorded; termination receipt missing
+    D -> H : continue same E-stop and canonical arguments; latest-receipt fence
+  else supervisor survives replaced daemon
+    D -> J : old daemon-instance writes refused; never adopt; reconcile historical effect/stop
+  else direct operator retirement; unbind unconfirmed
+    D -> J : retain/report durable broker-cleanup obligation
+    D -> B : authorised E-unbind / observe retained removal tombstone
+  else authorised credential renew-ahead on existing allocation
+    D -> B : fresh revocation.check prepare; narrowed E-rebind binding replacement
+    D -> J : same uid/generation; old tombstone; horizon update only after confirmation
+  else retiring / cleaning; remaining authorised cleanup with known observations
     D -> B : repeat applicable unbind with same effect ID
     D -> H : retire only after unbind confirmed; same retire effect ID
     D -> J : applicable one-shot identity cleanup after retirement (§14)\nterminal only after all required confirmations
   end
 end
 note over D,J
-  Daemon startup before readiness/admission, periodic internal sweep, explicit reconcile (§7.1).
+  Controls after ownership/schema/replay/authentication; classify every record for forward readiness.
+  Complete accounting + confined unknown retains local claims; unbounded uncertainty closes node.
+  Maintenance/restore/hold remain global barriers. No fresh launch grant needed for observation.
+  R-LOCK: never hold state lock on cross-service calls; per-record durable in-flight markers.
+  Wait graph: state lock -> local journal/records; unlocked workers -> helper/launcher/broker.
+  Bounded workers/sweep; cancel intent prompt; stale results cannot reopen admission/delivery.
+  R-FATE user-manager §7; all old-instance supervisor writes fenced, no live adoption.
   Internal daemon sweep every minute (§7.2); absent/unready daemon refuses new admission.
   R-OBS: recorded -> known present/absent by current target state.
   rolled_back / not_recorded -> known absent for that effect only; never automatic new create.
@@ -75,6 +108,15 @@ note over D,J
   Standing retirement/re-creation requires operator-signed record (§5.4).
   An absent account never authorises automatic standing re-creation.
   Intent is journaled before every external effect (§4.1).
+  R-OUTCOME receiver tables: unfinished stop/retire remains pending, not terminal refusal.
+  Observed admitted pending stop/retire may continue; unavailable/contradictory stays observation-only.
+  Continuation requires sound identity/fence evidence, not a completed termination/deletion receipt.
+  Same-ID continuation uses identical arguments and current-execution fence; old success never signals.
+  No authority-creating retry without fresh admission; unknown is never absence.
+  F-25: bounded helper deletion batches yield shared lock; same E-retire, no early UID release.
+  E-rebind only from authorised current chains, never wider; no seamless lease handoff claimed.
+  R-TIME watermark max expiry / min not_before; no untrusted advance.
+  Expiry deletion requires trusted time + boot-inclusive elapsed lifetime; downtime delays it.
   Refused cleanup stays pending; unknown is never known absent (§4.6).
   Keeper API and broker service UID spelling are unspecified in spec §§14, 3.1.
 end note

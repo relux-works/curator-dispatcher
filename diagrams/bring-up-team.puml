@@ -12,7 +12,7 @@ alt not operator or absent / invalid operator signature
     D --> O : refuse; agent.spawn is insufficient
   end
 else operator-signed description admitted
-  D -> J : lock; retain signed input and per-role allocation/effect records
+  D -> J : local lock: retain signed input/records; release before receiver calls
 end
 loop each described standing role: label, profile, harness, accounts, capabilities
   D -> J : reconcile existing allocation and journaled effects (§§4.6, 7.1)
@@ -20,6 +20,10 @@ loop each described standing role: label, profile, harness, accounts, capabiliti
     D -> J : retain pending; retry observation; no duplicate effect or allocation
   else existing standing allocation
     D -> D : reconcile authorised effects with fresh authority checks
+    opt explicit operator renewal consent/current chains
+      D -> B : fresh revocation.check prepare; E-rebind binding replacement
+      D -> J : same uid/generation; old removal tombstone retained
+    end
     D -> J : retain allocation; no automatic retirement / re-creation or relaunch
   else initial allocation creation admitted
     D -> J : provisioning; standing designation; no expires_at or lifetime quota
@@ -35,7 +39,7 @@ loop each described standing role: label, profile, harness, accounts, capabiliti
     alt create confirmed present
       H --> D : uid, generation
       opt helper v1
-        D -> H : fw.apply with its own journaled effect ID
+        D -> H : fw.apply admitted machine-owned pin; served-digest check; own effect ID
       end
       D -> D : construct narrowed leaf; keep caller dependency (§3.4)
       D -> J : journal distinct bind effect intent
@@ -62,6 +66,10 @@ note over O,J
   Requester signs new orchestrator delegation; dispatcher verifies/records, never signs it.
   Signature grammar, remaining fields, role matching and change handling,
   standing designation encoding and signed-record format are unspecified (§16).
+  R-LOCK: lock intent/in-flight -> unlock call -> lock/fence result; per-record bounded work.
+  Renew-ahead uses supplied operator consent/current chains, never reissues revoked authority.
+  R-TIME: watermark/time confidence bounds authority; standing lifetime remains unlimited.
+  R-GEN: generation is fresh random 128-bit, restore not authenticated by randomness.
   This view does not publish request members, refusal codes or result values.
 end note
 legend

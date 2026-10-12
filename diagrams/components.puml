@@ -1,4 +1,5 @@
 @startuml components
+' Revision 2 (2026-10-12): retain one DS note and restore the closed, linked legend.
 skinparam componentStyle rectangle
 title M-DP1: dispatcher service from slice 0 (draft; not implemented)
 actor "Caller process\n(person, orchestrator or optional board adapter)\ncaller UID; principal + registered key" as C
@@ -19,14 +20,14 @@ component "Key keeper\nlater gated integration\nowns registered identity / revoc
 C --> DMN : signed requests on dispatch/1 (all slices)
 DMN --> CORE
 SW --> CORE
-CORE --> DS : lock; journal before effects\natomic records; replay on startup
+CORE --> DS : local lock: intent/in-flight -> unlock call -> lock/fence result\natomic records; replay on startup
 CORE --> H : effect.observe; user.create / user.retire / exec.stop\ndistinct durable effect IDs; own generations
-CORE --> B : revocation.check at prepare/dequeue/start\neffect.observe; bind / unbind; attenuated leaf\nrequest intersect caller intersect dispatcher\ncaller chain retained as dependency
+CORE --> B : revocation.check at prepare/dequeue/start\neffect.observe; bind / unbind / E-rebind replacement; attenuated leaf\nrequest intersect caller intersect dispatcher\ncaller chain retained as dependency
 CORE --> SUP : execution claim; durable registration
 SUP --> L : launch.start; distinct E-launch
 L --> E : root receipt; drop GID/UID; shared lifecycle R-FD3\nread-only staged plan FD3; only 0-2 + FD3 to executor
 E --> B : own connection; lease\ncaller dependency rechecked
-SH ..> CORE : host_start; four bound values; refers to bound host admission permit (§12)
+SH ..> CORE : host_start / host_stop; session-scoped host admission permit\nper-start execution/controller/op claim and fence (§12)
 CORE ..> SH : durable admission / receipts; fence withdrawal or reconciliation
 SH ..> SR : delivery only after current-epoch registration/readiness
 SR ..> SH : fresh authenticated channel
@@ -37,7 +38,9 @@ note bottom of CORE
   Refusal: principal/key/signature/chain/quota failures never queue.
   Capacity: initial refusal; later capability queues and rechecks at dequeue.
   Broker revocation.check: revoked/unavailable refuses; final broker checks stay mandatory.
-  Recovery then readiness before admission; absent/unready daemon refuses without fallback.
+  Recovery controls after ownership/schema/replay/authentication.
+  Forward readiness after classification/confinement + complete accounting; retained unknown claims.
+  Unbounded shared uncertainty closes admission; absent daemon refuses without fallback.
   Recursive orchestrator provisioning refused until requester-signed bootstrap is qualified.
   Unknown/contradictory observations keep records pending:
   never relaunch, release capacity or declare cleanup successful.
@@ -51,11 +54,13 @@ note bottom of CORE
   Root caller request ID is correlation, not a shared receiver key.
 end note
 note right of SH
-  SH2+ disabled until host_start/permit authentication, crash ordering,
+  SH2+ disabled until lifecycle authorisation, host_start/host_stop and permit authentication, crash ordering,
   receipts, fences and ownership handoff are published/qualified.
   Dispatcher alone invokes the root launcher; host has no root start authority.
   Runner opens a fresh host channel; current-epoch registration/readiness before delivery.
-  Stop stays dispatcher -> helper exec.stop.
+  Owner consent gates successors; one-start replay grants none.
+  Same session/op replay returns one successor; previous claim must be absent.
+  Host stop stays dispatcher -> helper E-stop; host-requested, no start authority.
   Log handoff is unspecified in spec §16 (open question 5).
 end note
 note right of E
@@ -69,6 +74,17 @@ note right of K
   Standing identity revocation is operator-only with a signed record.
   Keeper API/process UID is unspecified in spec §14.
   Broker service UID spelling is unspecified in spec §3.1.
+end note
+note bottom of DS
+  R-LOCK wait graph: state lock -> local state I/O; unlocked workers -> helper/launcher/broker.
+  Old daemon-instance writers fenced; R-FATE table is user-manager §7.
+  R-GEN restore: external fence, independent coverage, reverse inventory and orphan obligations.
+  R-REBIND: authorised current chains, same random 128-bit account generation, never wider.
+  R-NETBIND: machine-owned policy pinned at prepare; caller text not authority.
+  R-TIME: durable watermark; trusted time + monotonic lifetime gates expiry destruction.
+  R-SVC-EGRESS: dispatcher/host deny-all under v1 service rows; DNS separately qualified.
+  R-WORKPLACE: separate gated allocation; service-owned swarma-rb-exec, never workplace UID.
+  F-16: cross-account standalone repository/private Git administration; same-account worktrees stay.
 end note
 legend
   Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#2-versions §2 versions]]

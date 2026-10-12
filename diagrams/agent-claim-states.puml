@@ -13,9 +13,9 @@ state "agent/1 (dispatcher-owned record; helper owns OS account ledger)" as Agen
   Provisioning --> Provisioning : standing failure: reconcile / await operator-signed decision
   Idle --> Active : dispatcher commits execution claim under lock
   Active --> Idle : execution finished; ordinary kept / standing allocation
-  Active --> Retiring : ordinary dispatch finished / ordinary allocation expired
+  Active --> Retiring : ordinary dispatch finished / expiry destruction gate satisfied
   Active --> Retiring : operator-signed standing retirement
-  Idle --> Retiring : ordinary retire / ordinary allocation expired
+  Idle --> Retiring : ordinary retire / expiry destruction gate satisfied
   Idle --> Retiring : operator-signed standing retirement
   Retiring --> Retiring : effects pending / observations unknown or contradictory
   Retiring --> Removed : applicable unbind, retire, identity cleanup confirmed
@@ -32,11 +32,11 @@ state "run/1 execution claim (dispatcher-owned; enum §4.4)" as Exec {
   Claimed --> Absent : cancel before launch / no supervisor registration on reconcile
   Launching --> Launching : receipt unknown; cancel waits; never relaunch
   Launching --> Started : launcher receipt known and recorded
-  Started --> ClaimStopping : explicit stop (cancel) / operator action / exit / incident hard stop
+  Started --> ClaimStopping : explicit stop (cancel / authorised host_stop) / operator action / exit / incident hard stop
   Started --> ClaimStopping : ordinary execution only: runtime deadline elapsed
   Started --> ClaimStopping : supervisor known absent
   ClaimStopping --> ClaimStopping : receipt missing -> retry same E-stop\nunknown/contradictory -> retain claim
-  ClaimStopping --> Absent : helper confirms no execution process remains
+  ClaimStopping --> Absent : latest-receipt fence; quiet-period account-wide absence
 }
 state "Capacity claim (§9; conceptual ownership, not a stored state enum)" as Capacity {
   state "reserved for owner record\nclaim_id, class, resources, expires_at" as Reserved
@@ -49,12 +49,17 @@ state "Capacity claim (§9; conceptual ownership, not a stored state enum)" as C
 }
 note bottom of Agent
   Dispatcher service UID swarma-dispatcher owns persistent agent/run records,
-  immutable inputs, effects, journal and capacity claims; state changes hold lock.
+  immutable inputs, effects, journal and capacity claims; local transitions hold lock.
+  R-LOCK: intent/in-flight -> unlock call -> lock/fence result; old daemon writers fenced.
   Daemon-owned supervisors run as service UID;
   launcher runs as root until agent UID exec; broker service is unprivileged.
   Broker owns bindings/leases; launcher writes start receipt; helper confirms stop.
   Ordinary failed provision unbinds if bound and retires if created.
   Retirement: quiesce / declared-key cleanup / home deletion; explicit operator retention only.
+  R-TIME: expiry destruction also needs trusted time + monotonic elapsed lifetime.
+  R-GEN: fresh random 128-bit generations; restore requires external fence/reverse inventory.
+  E-rebind keeps same account; explicit consent/current chains, old removal tombstone.
+  Direct operator retirement retains unconfirmed broker-cleanup obligation.
   Standing designation retained; encoding unpublished (§§4.3, 16).
   Standing: no expires_at or lifetime quota; sweep never expires it.
   Only operator-signed retirement or re-creation; no automatic replacement.
@@ -66,6 +71,9 @@ note bottom of Exec
   At most one claim per allocation; competing start refuses agent_busy.
   Standing executions have no max_runtime quota or runtime deadline.
   Sweep never stops them for runtime; ordinary executions keep 4 h / 12 h (§3.5).
+  Host successor requires lifecycle consent + current owner/chain/start verdict,
+  previous claim absent, unchanged plan; same session/op replay never starts twice.
+  R-OUTCOME stop continuation keeps same E-stop/arguments, old completed receipt never signals.
   Unknown/contradictory evidence never becomes absent (§4.6).
   Exact launcher-refusal claim transition is unspecified in spec §§4.4, 5.3.
   Supervisor registration/loss are observations, not extra stored claim states.
@@ -77,7 +85,9 @@ note bottom of Capacity
   Claim-expiry transition details and persisted capacity-state enum
   are unspecified in spec §§7.2, 9; expiry alone is not proof of absence.
   Sweep owns ordinary allocation lifetimes; never expires standing allocations.
-  Internal daemon sweep every minute.
+  Internal daemon sweep every minute; bounded unlocked per-record work.
+  Controls stay reachable after prerequisites; confined unknown claims retained.
+  Unbounded accounting/shared uncertainty closes node forward admission.
   Capacity-claim expiry is distinct from allocation expiry.
   No sweep running -> status says ordinary lifetimes are unenforced (§7.2).
 end note

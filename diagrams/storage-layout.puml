@@ -4,27 +4,32 @@ title M-DP3: dispatcher storage ownership and durable ordering, service slices (
 component "swarma-dispatcher process\nservice daemon from slice 0\nservice UID swarma-dispatcher" as D
 component "Supervisor\ndaemon-owned\nsame service UID" as S
 folder "Service-private state root (dispatcher-owned)\n/opt/swarma/services/swarma-dispatcher/state\nmode 0700 (§4.1)" as ROOT {
-  artifact "Immutable input/1\ncaller principal + root request_id, canonical request,\nplan bytes, full caller chain, digests (§4.2)" as INPUT
+  artifact "Immutable input/1\ncaller principal + root request_id, canonical request,\nplan bytes, full caller chain, digests,\nlifecycle authorisation + machine-owned network pin (§4.2)" as INPUT
   artifact "agent/1 allocations\nuid + generation, binding / leaf / caller chain IDs,\nregistered caller key, ordinary expiry / standing designation, cleanup (§4.3)" as AG
   artifact "run/1 executions\nowner + input, plan digest, execution claim + epoch,\nordinary-only runtime deadline; supervisor/start/termination evidence, outcome (§§4.4, 6)" as RUN
   artifact "Effect table\nid, component, operation, intent, result, observation (§4.5)" as EFFECT
   artifact "Journal\nappend + flush before external effect; replay at startup" as JOURNAL
   artifact "Index + capacity claims\nowned resources, expires_at (§9)" as CLAIM
-  artifact "Host admission permit (SH2+ gated)\nbound session / execution / controller epoch / op_id; encoding unpublished (§12)" as PERMIT
-  artifact "Dispatcher key + lock (§4.1)\nall state changes / reconciliation hold lock" as KEY
+  artifact "Host admission permit (SH2+ gated)\nsession-scoped logical_session_id; per-use physical claims/fences; encoding unpublished (§12)" as PERMIT
+  artifact "Dispatcher key + lock (§4.1)\nlocal journal/record transitions only; never cross-service waits" as KEY
+  artifact "Time watermark + boot-inclusive elapsed evidence\ntrusted advances; explicit reset; encoding unpublished" as TIME
+  artifact "Per-record in-flight markers + daemon-instance fence\nintent, immutable arguments, cancel intent; encoding unpublished" as FLIGHT
+  artifact "Restore-fence reference / epoch floor / reverse inventory obligations\nmark itself is outside restored domain; encoding unpublished" as RESTORE
   artifact "Bounded private executor output logs (§§6, 13)" as LOG
 }
+artifact "Operator restore mark\noutside the restored failure domain; location unpublished (§11.1)" as RESTOREMARK
 folder "Runtime socket directory from slice 0\n/opt/swarma/run/dispatcher/ (§8.3)" as SOCKET
 component "swarma-user-manager (root)\nowns OS account ledger / termination evidence" as H
 component "swarma-user-launcher (root until drop)\nwrites start receipt before agent UID exec" as L
 component "Credential broker (unprivileged service)\nowns bindings, grants/revocations, leases, credentials" as B
 component "curator-run -> harness (agent UID)\nagent-home working directory; own broker connection" as E
+D ..> RESTOREMARK : external fence before restored bytes become visible
 D --> ROOT : owned state; configuration selects root\nnever inherited HOME
 D --> SOCKET : all slices; peer authentication\nno fallback on auth/version/malformed reply
-S --> RUN : durable registration before launch\nrecord launcher / stop receipts
+S --> RUN : current daemon-instance epoch required for every write\ndurable registration before launch\nrecord launcher / stop receipts
 S --> LOG : bounded output
-D --> H : journal intent -> effect -> record result
-D --> B : journal intent -> bind/unbind -> record result
+D --> H : lock intent/in-flight -> unlock call -> lock/fence result
+D --> B : unlocked bind/unbind/binding replacement / observations
 S --> L : journaled launch intent; immutable plan FD3
 L --> E : user-manager §7 descriptor lifecycle (R-FD3)\nroot receipt; UID/GID drop; read-only staged FD3; verified exec
 E --> B : own authenticated lease connection
@@ -32,13 +37,22 @@ note bottom of ROOT
   Record replacement: temporary file -> flush -> rename -> directory flush.
   Journal replay covers a crash between journal and record replacement (§4.1).
   Input is written once before acceptance; later queue/recovery reads it (§4.2).
+  R-LOCK wait graph: state lock -> local journal/record I/O only.
+  Unlocked dispatcher workers -> helper/launcher/broker; unlocked host -> dispatcher.
+  Per-record waiters release global lock; ownership locks retain separate lifetime.
+  Late results revalidate record/daemon/controller fences; no resurrected start/delivery.
+  Bounded I/O/concurrency preserves recovery controls during stalled effects.
   Unknown/contradictory evidence keeps records pending: no relaunch,
   no capacity release, no successful cleanup; retry observations (§§4.6, 7.1).
   Standing: no expires_at or lifetime quota; designation encoding unpublished.
   Standing run/1: no runtime deadline or max_runtime quota; ordinary runs keep 4 h / 12 h.
   Sweep never stops standing executions for runtime (§§3.5, 4.4, 7.2).
   Only operator-signed retirement/re-creation (§§4.3, 5.4); never sweep expiry.
-  Unbind then quiesce / declared-key cleanup / home deletion;
+  Ordinary: confirmed unbind then local quiesce / declared-key cleanup / home deletion.
+  Direct operator retirement retains unconfirmed broker-cleanup obligation.
+  Bounded helper deletion batches continue same E-retire; no early UID/quota release.
+  Expiry deletion also needs trusted time + monotonic elapsed lifetime.
+  E-rebind keeps same random 128-bit generation and old removal tombstone;
   explicit operator retention has no confidentiality guarantee (§5.4); applicable one-shot identity revocation
   is a separate confirmed effect after retirement (§§5.4, 14).
   Subfile names, per-file modes/groups and retention/deletion rules
@@ -47,7 +61,11 @@ end note
 note right of SOCKET
   Socket basename, owner/group/mode details are unspecified in spec §8.3.
   Broker service UID spelling is unspecified in spec §3.1.
-  Initial activation: closed admission, compatible state, recover, publish ready.
+  Control availability after ownership/schema/replay/authentication.
+  Forward readiness after complete classification/accounting and confinement.
+  Unknown records keep claims; unbounded shared uncertainty closes admission.
+  State loss: external restore fence, independent coverage, reverse inventory.
+  Orphans await signed operator decision; no automatic/live adoption.
   Maintenance: bounded operator attempt; close admission, inventory, authorized exec.stop,
   confirmed absence/reconciliation before mode/schema/binary change; no live adoption.
   Unknown/refused stop defers change; standing allocations and identities retained.
