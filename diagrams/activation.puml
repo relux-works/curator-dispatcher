@@ -1,11 +1,18 @@
 @startuml activation
 title Companion to M-DP3: service activation and bounded operator maintenance (§11)
-actor "Operator" as O
+actor "Operator" as A
+participant "Phone app\noperator device key; secure element" as P
+participant "Terminal\npassword sudo; timestamp_timeout=0" as T
+participant "Operator command\nswarma-operator; no harness sessions" as O
+participant "Read-only account\nswarma-observer" as R
 participant "Dispatcher service\nservice UID swarma-dispatcher" as D
 database "Durable state\njournal, effects, claims, maintenance progress" as J
 participant "swarma-user-manager\nroot; exec.stop and absence evidence" as H
 participant "Service installer / manager" as I
 == initial activation, slice 0 ==
+I -> O : protected no-harness swarma-operator; broker operator/account owner; helper operator UID
+I -> R : mandatory read-only swarma-observer
+I -> O : phone path when configured: pinned device key/forced command; terminal password fallback
 I -> D : authenticated/operator-controlled time source; install/start; admission closed
 D -> J : exclusive state; validate compatibility; replay journal
 D -> D : valid auth/indexes -> recovery controls reachable
@@ -15,9 +22,29 @@ alt unbounded identity/accounting/shared-state uncertainty or global barrier
 else complete accounting and unresolved effects confined to retained claims/identities
   D -> D : forward ready for unrelated sound work; uncertain records blocked
 end
+R -> D : dispatcher state reads; no confirmation
+D --> R : status/grants/accounts/bindings as represented; no mutation authority
 == bounded maintenance attempt ==
-O -> D : explicit authorized maintenance with selected executions
-note over O,D : Authorization, deadline/progress and restart-review encoding remain unpublished (§16).
+alt main phone path
+  A -> P : review exact content (who, actions, until when); biometric confirmation
+  P -> P : sign canonical content; device key never leaves phone
+  P -> O : SSH over tailnet; device-key-only login; forced command; no shell\nsigned operator record
+  O -> O : verify against pinned phone key; signature bound to this act
+else terminal fallback (works without phone)
+  A -> T : password sudo into swarma-operator; no NOPASSWD; no cached ticket
+  T -> O : confirm exact content; signed operator record under operator authority
+end
+O -> O : refuse agent-session origin; require authentication and content confirmation
+O -> D : signed selected-stop maintenance authority under swarma-operator
+D -> D : verify operator record and origin/confirmation; refuse agent-session origin before stop
+alt agent-session origin / invalid signature / missing authentication or content confirmation
+  break no selected stop or maintenance effect
+    D --> O : refuse; operator authority required
+  end
+else signed operator authority admitted
+  D -> J : retain signed selected-stop authority
+end
+note over O,D : Operator command/signature, authorization, deadline/progress and restart-review encoding unpublished (§16).
 D -> D : close new admission
 D -> J : durable inventory and selected-stop intent
 loop selected affected executions from user-manager §7 R-FATE table; bounded deadline
@@ -55,7 +82,10 @@ note over D,J
   R-LOCK: cross-service workers hold no state lock; bounded per-record markers.
   F-17: declared restore closes admission before bytes visible; external mark,
   ledger epoch floor, independent coverage and reverse accounts/bindings/receipts inventory.
-  Orphans require signed operator decision; no restored snapshot certifies absence.
+  Orphans require signed swarma-operator decision via phone or terminal; never from agent sessions.
+  No restored snapshot certifies absence; no operator key restore into a harness account.
+  Standing re-grants use the same operator path; no automatic delegation published.
+  Key enrolment/rotation/phone loss open; terminal re-enrolment proposed (§16).
   R-TIME: trusted watermark max expiry / min not_before; monotonic lifetime for deletion.
   V1 deny-all service-profile row/resolver evidence verified at start/schedule (§13).
   Maintenance deadline bounds the attempt, never standing execution lifetime.

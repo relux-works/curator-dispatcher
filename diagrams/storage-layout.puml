@@ -47,6 +47,10 @@ note bottom of ROOT
   Standing: no expires_at or lifetime quota; designation encoding unpublished.
   Standing run/1: no runtime deadline or max_runtime quota; ordinary runs keep 4 h / 12 h.
   Sweep never stops standing executions for runtime (§§3.5, 4.4, 7.2).
+  R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
+  Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
+  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Only operator-signed retirement/re-creation (§§4.3, 5.4); never sweep expiry.
   Ordinary: confirmed unbind then local quiesce / declared-key cleanup / home deletion.
   Direct operator retirement retains unconfirmed broker-cleanup obligation.

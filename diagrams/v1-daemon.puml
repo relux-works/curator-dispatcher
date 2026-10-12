@@ -1,6 +1,7 @@
 @startuml v1-daemon
 title Companion to M-DP1: service from slice 0; later capabilities and gated SH2+ backend
 participant "Caller process\ncaller UID / principal + key" as C
+participant "Read-only account\nswarma-observer" as R
 participant "swarma-dispatcher daemon\nservice UID swarma-dispatcher\nadmission, records, claims, effects, cleanup" as D
 participant "swarma-session-host\nSH2+ own service UID\nmetadata, logs, receipts, fences, input admission" as SH
 participant "swarma-user-launcher\nroot until agent UID drop; receipt writer" as L
@@ -19,6 +20,10 @@ end
 opt forward admission closed but valid control surface
   C -> D : authorised status/list/reconcile or current-execution stop
   D --> C : observations/stop intent; retained unknown claims; no launch grant needed
+end
+opt operator state read after control prerequisites
+  R -> D : status/list and dispatcher state reads; no confirmation
+  D --> R : read-only state; no mutation authority
 end
 D -> D : forward request requires readiness; prepare principal/signature/chains, quota\nmachine-owned network binding pin; caller text checked, never authority
 D -> B : revocation.check exact chains, context prepare
@@ -177,6 +182,10 @@ note over D
   Host reboot requester remains open; owner lifecycle consent bounds either candidate.
   Workplace backend is separate/gated: service-owned swarma-rb-exec, enforced helper v1.
   Internal sweep never expires standing allocations or stops them for runtime.
+  R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
+  Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
+  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Standing retirement/re-creation is operator-only with signed record (§5.4).
   Maintenance: bounded authorized stop attempt; confirmed absence/reconciliation
   before mode/schema/binary change; retain standing allocations/identities; no live adoption.

@@ -201,6 +201,10 @@ note over D,J
   Standing team lifecycle is bring-up-team.puml (§5.5): no allocation expiry;
   standing executions have no max_runtime quota or deadline; sweep never stops them for runtime.
   no automatic retirement on failure, exit or authority loss.
+  R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
+  Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
+  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Only operator-signed standing retirement/re-creation (§5.4).
   Outcome kind is separate from run state (§4.4 / §8.2).
 end note

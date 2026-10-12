@@ -41,6 +41,10 @@ note left of Queued
   No direct terminal edge bypassing cleanup is asserted.
 end note
 note right of Terminal
+  R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
+  Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
+  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Standing allocation exit does not retire it; operator-signed retirement only.
   Standing execution: no max_runtime quota or runtime deadline (§§3.5, 4.4).
   Sweep never stops it for runtime; applies in all backends.

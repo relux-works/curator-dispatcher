@@ -17,6 +17,10 @@ component "curator-run narrow exec mode\nagent UID; first broker consumer\nthen 
 component "swarma-session-host service\nSH2+ gated; own service UID\nowns session metadata, logs, receipts, fences" as SH
 component "swarma-session-runner\nSH2+ gated; agent UID\nowns PTY/app-server and lease renewal" as SR
 component "Key keeper\nlater gated integration\nowns registered identity / revocation state" as K
+component "Operator command\nswarma-operator; no harness sessions\nphone-first signing / terminal fallback" as O
+actor "Read-only account\nswarma-observer" as R
+O --> CORE : signed team/retirement/maintenance/re-grant records\norigin/confirmation checks; formats unpublished
+R --> DMN : dispatcher state reads; no confirmation; no mutation
 C --> DMN : signed requests on dispatch/1 (all slices)
 DMN --> CORE
 SW --> CORE
@@ -49,6 +53,10 @@ note bottom of CORE
   Standing: no expiry/lifetime quota; sweep never expires it.
   Standing executions: no max_runtime quota or deadline; sweep never stops them for runtime.
   Ordinary executions: default 4 h, maximum 12 h; runtime expiry still stops (§§3.5, 7.2).
+  R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
+  Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
+  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Standing retirement/re-creation only with operator-signed record.
   Operator-signed team/1 bring-up is specified-but-unpublished (§5.5).
   Root caller request ID is correlation, not a shared receiver key.

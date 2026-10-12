@@ -105,6 +105,10 @@ note over D,J
   Standing executions: no max_runtime quota or deadline, including after recovery.
   Sweep never stops them for runtime; ordinary executions keep 4 h / 12 h,
   and sweep stops them through exec.stop when their runtime deadline elapses (§7.2).
+  R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
+  Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
+  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Standing retirement/re-creation requires operator-signed record (§5.4).
   An absent account never authorises automatic standing re-creation.
   Intent is journaled before every external effect (§4.1).

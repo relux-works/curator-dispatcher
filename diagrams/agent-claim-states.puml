@@ -62,6 +62,10 @@ note bottom of Agent
   Direct operator retirement retains unconfirmed broker-cleanup obligation.
   Standing designation retained; encoding unpublished (§§4.3, 16).
   Standing: no expires_at or lifetime quota; sweep never expires it.
+  R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
+  Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
+  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Only operator-signed retirement or re-creation; no automatic replacement.
   Retirement / re-creation signed-record format is unpublished (§5.4).
   Keeper integration: revoke only registered one-shot identity AFTER retirement;
