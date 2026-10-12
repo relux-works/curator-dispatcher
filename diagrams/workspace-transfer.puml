@@ -1,0 +1,84 @@
+@startuml workspace-transfer
+title R-TRANSFER: dispatcher workspace contract and board exact-candidate path (draft)
+participant "Original caller principal" as C
+participant "Dispatcher\nno repository; journals digests" as D
+database "Dispatcher journal\nplan/digests/export obligation" as J
+participant "swarma-workspace-materialize\napproved executor; child UID" as M
+participant "Worker\nprivate standalone repository" as W
+participant "User manager\naccount-wide stop scope" as H
+participant "Project-side executor\nservice principal; workplace fence" as F
+participant "swarma-workspace-export\napproved executor; child UID; no network" as X
+participant "Board change-request machinery\norchestrator executes; formats unpublished" as B
+participant "Trusted reviewer\nnot producer; not untrusted" as R
+== materialize base B ==
+C -> D : admitted base B as bounded canonical tree archive with start
+D -> J : archive digest; plan covers B, manifest digest, write scope, exec profile
+D -> M : relay archive; approved child-UID materialization before work
+M -> W : standalone private repository; fresh config; no hooks/remotes/credential helpers
+note over D,W
+  R-UNTRUSTED: every workplace untrusted; no subscription binding or host-local loop.
+  R-NET-TOOL/R-EXEC: workplace zero egress; qualified executable whitelist.
+  Worker has no push/merge-request access; code leaves only as platform-taken data.
+  R-VERIFY: builds/tests/worker code execution only on off-host secret-free runners.
+  Archive, plan fields, caps and result schema/retention unpublished.
+end note
+W -> W : edit in admitted write scope; platform ignores worker .git/commits/history
+== round end and export ==
+W -> C : board outcome (local) or signed final envelope (remote)
+C -> D : round end; intermediate export allowed at turn boundary under same fence
+D -> J : journal current-execution exec.stop intent; retain export obligation
+D -> H : exec.stop; account-wide scope
+H --> D : confirmed absence of every account process, or unknown/pending
+opt workplace round
+  D -> F : write-fence round workspace
+  F --> D : refuse further tool calls into this round
+end
+alt absence or required fence unconfirmed
+  break no export or candidate
+    D -> J : retain claims/obligation; no export or home deletion
+    D --> C : pending/unknown evidence
+  end
+else absence and required fence confirmed
+  D -> J : journal export intent
+  D -> X : approved child-UID export with fixed environment, no network
+  X -> X : walk without following links; skip .git; compare files to plan manifest
+  alt forbidden path/type/collision/submodule/root escape or exceeded cap
+    break no result or candidate
+      X --> D : refuse whole export; no partial result
+      D -> J : retain export obligation; home deletion blocked unless operator waiver
+    end
+  else valid bounded change set
+    X --> D : regular-file content/mode, symlink text and deleted paths
+    D -> J : record export/result digests; discharge export obligation
+    D --> C : swarma-dispatcher workspace-result/1; original caller only
+  end
+end
+== board-owned import and exact-commit review after valid export ==
+C -> B : accept result as resource; deterministic import on B
+B -> B : scratch index; no hooks/attribute filters/drivers
+B -> B : refuse .git, outside write scope, .task-board; flag sensitive paths and every symlink
+B -> B : sign candidate C with repository identity; worker/run/result-digest trailers
+B -> B : verify C tree equals recomputed B plus change set
+B -> R : review exactly C; execution only in R-VERIFY
+R --> B : verdict bound to C (K1); flagged paths acknowledged hunk by hunk
+alt changes requested
+  B -> C : findings; next admitted base C
+  C -> D : next round archive from C; remote signed letter or local task snapshot
+  D -> M : materialize fresh workspace from C; remove old round only after recorded export
+  M -> W : rework on C; donor-side session continues for remote worker
+  W -> W : next fenced round/export produces C2 on C; repeat exact-candidate review
+else exact C accepted
+  B -> B : signed fast-forward of accepted exact head (K1/K3)
+  note right of B : Moved base requires ordinary refresh and re-review.
+end
+note over D,J
+  Export cleanup obligation precedes retirement; only explicit operator act waives it.
+  No relaxed home permissions or recursive chown; dispatcher holds no repository.
+  Import/candidate/review/integration belong to the board and remain unpublished here.
+  Remote-workplace protocol v2.1 sections 8 and 10 gates adopted; executor exports under UID.
+end note
+legend
+  Defining spec: §§3.6, 4.2, 5.2-5.4, 14, 16 question 22.
+  Design labels do not publish commands, wire fields, refusal codes or cap values.
+endlegend
+@enduml

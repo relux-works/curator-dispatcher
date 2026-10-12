@@ -83,7 +83,7 @@ loop bounded per-record allocation / execution work (§7.1)
     D -> J : same uid/generation; old tombstone; horizon update only after confirmation
   else retiring / cleaning; remaining authorised cleanup with known observations
     D -> B : repeat applicable unbind with same effect ID
-    D -> H : retire only after unbind confirmed; same retire effect ID
+    D -> H : retire only after applicable unbind confirmed and workspace export recorded/waived; same retire effect ID
     D -> J : applicable one-shot identity cleanup after retirement (§14)\nterminal only after all required confirmations
   end
 end
@@ -95,6 +95,11 @@ note over D,J
   Wait graph: state lock -> local journal/records; unlocked workers -> helper/launcher/broker.
   Bounded workers/sweep; cancel intent prompt; stale results cannot reopen admission/delivery.
   R-FATE user-manager §7; all old-instance supervisor writes fenced, no live adoption.
+  R-TRANSFER: pending export obligation survives failure/expiry/restore; home deletion waits for export or operator waiver.
+  Untrusted workplace has no binding: trusted bind/unbind rows are inapplicable, never treated as missing evidence.
+  R-CEILINGS/R-EXEC: fresh qualified matrix/profile checks on forward work.
+  R-WATCH: one account only, journaled stop follows R-FATE; no automatic all-stop.
+  R-ALLSTOP: partial/unknown service results keep hold; explicit recovery, no auto-restart.
   Internal daemon sweep every minute (§7.2); absent/unready daemon refuses new admission.
   R-OBS: recorded -> known present/absent by current target state.
   rolled_back / not_recorded -> known absent for that effect only; never automatic new create.

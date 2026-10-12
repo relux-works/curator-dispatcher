@@ -9,7 +9,7 @@ state "cleaning" as Cleaning
 state "Terminal run state\ndone | failed | cancelled | expired" as Terminal
 [*] --> Accepted : dispatcher accepts immutable input
 Accepted --> Queued : later queue capability: temporary capacity closure
-Accepted --> Starting : authority + capacity admitted; fresh revocation.check(start); execution claim
+Accepted --> Starting : recorded class + host matrix + exec profile + authority + capacity admitted; fresh revocation.check(start); execution claim
 Queued --> Starting : authority/window/quota + all gates rechecked; fresh revocation.check(dequeue)
 Queued --> Queued : temporary closure / operator drain park
 Starting --> Running : supervisor registered; launcher receipt recorded
@@ -20,7 +20,7 @@ Running --> Stopping : supervisor known absent; recovery exec.stop; outcome lost
 Stopping --> Stopping : termination missing: repeat same E-stop\nunknown / contradictory: retain state and claim
 Stopping --> Cleaning : stop / absence confirmed; record outcome\nordinary kept / standing idle; retirement only as authorised (§5.4)
 Cleaning --> Cleaning : pending cleanup: same effect IDs\nunknown/refused identity revocation remains pending
-Cleaning --> Terminal : applicable cleanup confirmed (§§5.4, 7.1)
+Cleaning --> Terminal : export recorded/waived; applicable cleanup confirmed (§§5.4, 7.1)
 Terminal --> [*]
 note right of Starting
   Owner: dispatcher service UID swarma-dispatcher.
@@ -34,6 +34,9 @@ note right of Starting
   unspecified in spec §5.3; no extra stored state is invented.
 end note
 note left of Queued
+  R-UNTRUSTED: slice 0/helper v0 refuse untrusted; no subscription binding/lease.
+  R-CEILINGS/R-EXEC: matrix minimums and OS profile required.
+  R-VERIFY: builds/tests on another machine only; no build job class here.
   Initial capacity closes -> refusal, no queued state.
   Quota / authority failures refuse in every slice, never queue.
   Cancel, window expiry (expired_in_queue), drain reject:
@@ -45,6 +48,10 @@ note right of Terminal
   Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
   Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
   swarma-observer reads dispatcher state without confirmation; no mutation authority.
+  R-STANDING: host loops trusted only; untrusted standing placement is workplace.
+  R-WATCH: own-allocation freeze + journaled stop, phone alert; no unrelated stop.
+  R-ALLSTOP: manual hold/all stops; separate service journals; unknown holds, explicit recovery.
+  R-TRANSFER: fenced round end/export before retirement; workspace-transfer.puml.
   Standing allocation exit does not retire it; operator-signed retirement only.
   Standing execution: no max_runtime quota or runtime deadline (§§3.5, 4.4).
   Sweep never stops it for runtime; applies in all backends.

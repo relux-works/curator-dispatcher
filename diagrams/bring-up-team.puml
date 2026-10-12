@@ -20,7 +20,7 @@ else terminal fallback (works without phone)
 end
 O -> O : refuse agent-session origin; require authentication and content confirmation
 O -> D : signed standing team description under swarma-operator authority\nswarma-dispatcher team/1 (unpublished)
-D -> D : authenticate swarma-operator authority; verify signed description and origin/confirmation; check authority, quotas and leaf constructibility
+D -> D : authenticate swarma-operator authority; verify signed description and origin/confirmation; record trusted class; check host matrix, exec profile, authority, quotas and leaf constructibility
 alt agent-session origin / not operator / absent or invalid signature or confirmation
   break no team effect
     D --> O : refuse; agent.spawn is insufficient
@@ -79,10 +79,15 @@ note over O,J
   Agent-session origin refuses before effects; observer reads need no confirmation.
   Operator command binary/wire and signature domain/canonical bytes remain unpublished.
   Key enrolment/rotation/phone loss open; terminal re-enrolment proposed (§16).
+  R-STANDING: this host-local-loop team is trusted only; untrusted standing placement is workplace.
+  R-UNTRUSTED: every workplace untrusted, no subscription binding/lease; slice 0/helper v0 refuse.
+  R-EXEC/R-VERIFY: task exec profile, light checks only; builds/tests off-host.
+  R-NET-TOOL: trusted provider-only proxy binding.
+  R-TRANSFER: workspace export recorded/waived before retirement.
   Sweep never expires standing allocations; execution start is separate (§5.3).
   Their executions have no max_runtime quota or deadline; sweep never stops them for runtime.
   Explicit stop, operator action, own exit or incident hard stop still ends an execution.
-  Direct workers and operator-enrolled orchestrators initially; recursive bootstrap remains gated.
+  Trusted direct workers and operator-enrolled orchestrators initially; recursive bootstrap remains gated.
   Requester signs new orchestrator delegation; dispatcher verifies/records, never signs it.
   Signature grammar, remaining fields, role matching and change handling,
   standing designation encoding and signed-record format are unspecified (§16).

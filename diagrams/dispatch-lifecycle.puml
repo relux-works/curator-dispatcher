@@ -1,5 +1,5 @@
 @startuml dispatch-lifecycle
-title M-DP1: service slices ordinary allocation and one-shot lifecycle (draft; §5.3 intake gate)
+title M-DP1: trusted-agent ordinary allocation and one-shot lifecycle (draft; §5.3 intake gate)
 participant "Caller process\ncaller UID / principal + key" as C
 participant "Dispatcher core\nservice UID swarma-dispatcher" as D
 database "Dispatcher-owned state\ninputs, records, effects, claims, journal, logs" as J
@@ -9,7 +9,7 @@ participant "Supervisor\nservice UID; daemon-owned" as S
 participant "swarma-user-launcher\nroot; writes start receipt" as L
 participant "curator-run -> harness\nagent UID; agent home / working directory" as E
 == prepare and provision (§5.1) ==
-C -> C : compose plan and resolved PATH; digest
+C -> C : compose plan, exec-profile reference and resolved PATH; digest
 note right of C
   Orchestrator caller: own agent account and Curator home configuration (§5.2).
   Child profile/environment access and narrowed-grant constraints are open (§16).
@@ -17,7 +17,7 @@ end note
 D -> J : establish controls; classify/account for forward readiness (§7.1)
 C -> D : dispatch/1 signed provision or dispatch; caller-scoped root R
 D -> J : local lock: snapshot/intent + per-record marker; unlock for reconciliation calls (§4.1)
-D -> D : principal/key/signature/chains, quotas, constructibility, digest\nresolve machine-owned network binding; check caller text; pin ref/digest
+D -> D : principal/key/signature/chains, quotas, constructibility, digest\nrecord class; require qualified host matrix and exec profile\ntrusted provider-only binding; check caller text; pin ref/digest
 D -> B : revocation.check exact chains, context prepare
 B --> D : not_revoked / revoked / unavailable + revocation sequence
 alt prepare refused, revoked or unavailable
@@ -166,7 +166,7 @@ opt ordinary dispatch on-exit, retirement, qualified expiry or failed provisioni
     end
   end
   opt account was created
-    D -> J : journal E-retire intent
+    D -> J : discharge workspace export obligation: recorded export or operator waiver\njournal E-retire intent
     D -> H : user.retire {request_id: E-retire, home: delete}
     note over D,H : Local retirement only; bounded deletion batches stay pending under E-retire until full confirmation.
     alt retirement confirmed
@@ -192,7 +192,13 @@ note over D,J
   R-OUTCOME receiver tables map unfinished admitted work to pending (six R-OBS states).
   Same E-stop/arguments progresses after processes_remain; completed replay never signals.
   R-FATE: user-manager §7 defines exact process fate/affected sets; old writers fenced.
-  F-16: cross-account workspace is standalone with private .git/config/hooks, no backlink.
+  R-TRANSFER: standalone private repository from caller archive; no backlink.
+  Child-UID materialize/export and board-owned exact-candidate path: workspace-transfer.puml.
+  R-EXEC/R-VERIFY: no builds/tests here; qualified light checks only, verification off-host.
+  R-UNTRUSTED: this trusted binding/harness path never serves an untrusted workplace.
+  R-STANDING: host-local loops trusted only; plan surfaces digest-checked on launch/restart/resume.
+  R-WATCH: own-allocation freeze + journaled exec.stop; operator phone alert.
+  R-ALLSTOP: manual hold/all-execution stop; service parts journal separately, unknown keeps hold.
   Expiry cleanup requires wall expiry + trusted time + boot-inclusive elapsed lifetime.
   Direct operator retirement leaves unconfirmed E-unbind as durable obligation.
   Journal intent before every external effect; persist result/observation (§4).

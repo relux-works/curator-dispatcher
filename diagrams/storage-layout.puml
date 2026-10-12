@@ -4,8 +4,8 @@ title M-DP3: dispatcher storage ownership and durable ordering, service slices (
 component "swarma-dispatcher process\nservice daemon from slice 0\nservice UID swarma-dispatcher" as D
 component "Supervisor\ndaemon-owned\nsame service UID" as S
 folder "Service-private state root (dispatcher-owned)\n/opt/swarma/services/swarma-dispatcher/state\nmode 0700 (§4.1)" as ROOT {
-  artifact "Immutable input/1\ncaller principal + root request_id, canonical request,\nplan bytes, full caller chain, digests,\nlifecycle authorisation + machine-owned network pin (§4.2)" as INPUT
-  artifact "agent/1 allocations\nuid + generation, binding / leaf / caller chain IDs,\nregistered caller key, ordinary expiry / standing designation, cleanup (§4.3)" as AG
+  artifact "Immutable input/1\ncaller principal + root request_id, canonical request,\nplan bytes, full caller chain, digests,\nrecorded class, exec-profile reference, lifecycle authorisation + network pin\nworkspace base/archive/manifest digests and write scope (§4.2; encoding unpublished)" as INPUT
+  artifact "Trusted agent/1 allocations\nuid + generation, binding / leaf / caller chain IDs,\nregistered caller key, ordinary expiry / standing designation, export obligation + cleanup (§4.3; encoding unpublished)" as AG
   artifact "run/1 executions\nowner + input, plan digest, execution claim + epoch,\nordinary-only runtime deadline; supervisor/start/termination evidence, outcome (§§4.4, 6)" as RUN
   artifact "Effect table\nid, component, operation, intent, result, observation (§4.5)" as EFFECT
   artifact "Journal\nappend + flush before external effect; replay at startup" as JOURNAL
@@ -22,14 +22,14 @@ folder "Runtime socket directory from slice 0\n/opt/swarma/run/dispatcher/ (§8.
 component "swarma-user-manager (root)\nowns OS account ledger / termination evidence" as H
 component "swarma-user-launcher (root until drop)\nwrites start receipt before agent UID exec" as L
 component "Credential broker (unprivileged service)\nowns bindings, grants/revocations, leases, credentials" as B
-component "curator-run -> harness (agent UID)\nagent-home working directory; own broker connection" as E
+component "curator-run -> harness (agent UID)\nagent-home working directory; trusted-only broker connection" as E
 D ..> RESTOREMARK : external fence before restored bytes become visible
 D --> ROOT : owned state; configuration selects root\nnever inherited HOME
 D --> SOCKET : all slices; peer authentication\nno fallback on auth/version/malformed reply
 S --> RUN : current daemon-instance epoch required for every write\ndurable registration before launch\nrecord launcher / stop receipts
 S --> LOG : bounded output
 D --> H : lock intent/in-flight -> unlock call -> lock/fence result
-D --> B : unlocked bind/unbind/binding replacement / observations
+D --> B : unlocked trusted-only bind/unbind/binding replacement / observations
 S --> L : journaled launch intent; immutable plan FD3
 L --> E : user-manager §7 descriptor lifecycle (R-FD3)\nroot receipt; UID/GID drop; read-only staged FD3; verified exec
 E --> B : own authenticated lease connection
@@ -52,7 +52,10 @@ note bottom of ROOT
   Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
   swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Only operator-signed retirement/re-creation (§§4.3, 5.4); never sweep expiry.
-  Ordinary: confirmed unbind then local quiesce / declared-key cleanup / home deletion.
+  R-TRANSFER: journal archive/result digests; no dispatcher repository.
+  Export recorded or operator waiver precedes home deletion, including direct operator retirement.
+  Untrusted workplace has no subscription binding/lease; trusted binding records only.
+  Ordinary: applicable confirmed unbind then local quiesce / declared-key cleanup / home deletion.
   Direct operator retirement retains unconfirmed broker-cleanup obligation.
   Bounded helper deletion batches continue same E-retire; no early UID/quota release.
   Expiry deletion also needs trusted time + monotonic elapsed lifetime.
@@ -70,6 +73,9 @@ note right of SOCKET
   Unknown records keep claims; unbounded shared uncertainty closes admission.
   State loss: external restore fence, independent coverage, reverse inventory.
   Orphans await signed operator decision; no automatic/live adoption.
+  R-WATCH: per-class samples, own-allocation freeze + journaled stop; phone alert.
+  R-ALLSTOP: manual hold/all stops; user-manager/broker/host parts journal separately;
+  unknown/partial keeps admission closed; explicit recovery, no automatic restart.
   Maintenance: bounded operator attempt; close admission, inventory, authorized exec.stop,
   confirmed absence/reconciliation before mode/schema/binary change; no live adoption.
   Unknown/refused stop defers change; standing allocations and identities retained.

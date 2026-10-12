@@ -25,7 +25,7 @@ opt operator state read after control prerequisites
   R -> D : status/list and dispatcher state reads; no confirmation
   D --> R : read-only state; no mutation authority
 end
-D -> D : forward request requires readiness; prepare principal/signature/chains, quota\nmachine-owned network binding pin; caller text checked, never authority
+D -> D : forward request requires readiness; prepare principal/signature/chains, quota\nrecorded class, qualified host matrix, exec profile\ntrusted provider-only network pin; caller text checked, never authority
 D -> B : revocation.check exact chains, context prepare
 B --> D : not_revoked / revoked / unavailable + revocation sequence
 alt quota / authority failure or revoked / unavailable
@@ -181,6 +181,14 @@ note over D
   expiry deletion also needs boot-inclusive elapsed lifetime; explicit stop stays reachable.
   Host reboot requester remains open; owner lifecycle consent bounds either candidate.
   Workplace backend is separate/gated: service-owned swarma-rb-exec, enforced helper v1.
+  R-UNTRUSTED: every workplace untrusted; slice 0/helper v0 refuse; no subscription binding/lease.
+  R-NET-TOOL/R-RANGE-DENY: workplace zero egress/no proxy; static range rule from v0.
+  R-EXEC/R-VERIFY: OS exec allowlist, light checks only; builds/tests off-host.
+  R-CEILINGS: class minimums met by published host matrix; no OS-name ban.
+  R-STANDING: host-local loop trusted only; digest-check surfaces on launch/restart/resume.
+  R-TRANSFER: export obligation before retirement; workspace-transfer.puml.
+  R-WATCH: per-class samples, own-account freeze + journaled stop and phone alert.
+  R-ALLSTOP: manual hold/all stops; service parts journal separately; explicit recovery.
   Internal sweep never expires standing allocations or stops them for runtime.
   R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
   Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.

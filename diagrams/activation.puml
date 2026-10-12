@@ -1,5 +1,5 @@
 @startuml activation
-title Companion to M-DP3: service activation and bounded operator maintenance (§11)
+title Companion to M-DP3: activation, maintenance and node-wide operator stop (§§6, 11)
 actor "Operator" as A
 participant "Phone app\noperator device key; secure element" as P
 participant "Terminal\npassword sudo; timestamp_timeout=0" as T
@@ -9,11 +9,14 @@ participant "Dispatcher service\nservice UID swarma-dispatcher" as D
 database "Durable state\njournal, effects, claims, maintenance progress" as J
 participant "swarma-user-manager\nroot; exec.stop and absence evidence" as H
 participant "Service installer / manager" as I
+participant "Credential broker" as B
+participant "Session host" as SH
 == initial activation, slice 0 ==
 I -> O : protected no-harness swarma-operator; broker operator/account owner; helper operator UID
 I -> R : mandatory read-only swarma-observer
 I -> O : phone path when configured: pinned device key/forced command; terminal password fallback
-I -> D : authenticated/operator-controlled time source; install/start; admission closed
+I -> H : R-RANGE-DENY static UID-range deny before accounts; active precedence probe
+I -> D : authenticated/operator-controlled time source; qualified matrix/profile/socket evidence\ninstall/start; admission closed
 D -> J : exclusive state; validate compatibility; replay journal
 D -> D : valid auth/indexes -> recovery controls reachable
 D -> D : classify records; reconcile with unlocked per-record calls
@@ -24,6 +27,44 @@ else complete accounting and unresolved effects confined to retained claims/iden
 end
 R -> D : dispatcher state reads; no confirmation
 D --> R : status/grants/accounts/bindings as represented; no mutation authority
+== node-wide emergency stop (R-ALLSTOP; manual operator act) ==
+alt phone path
+  A -> P : authenticate and one confirmation of node-wide stop
+  P -> O : signed exact act; SSH forced command, no shell
+else terminal fallback
+  A -> T : password sudo into operator account; no cached ticket
+  T -> O : node-wide stop act
+end
+O -> O : verify act; refuse agent-session origin
+alt invalid authentication / confirmation / signature or agent-session origin
+  break no node-wide effect
+    O --> A : refuse operator act
+  end
+else operator act admitted
+  O -> D : authenticated operator node-wide narrowing act; format unpublished
+end
+D -> J : journal act; set fail-closed hold before admission
+D -> H : separately journaled range deny-all effect
+loop every agent/workplace generation and execution
+  D -> J : journal current-execution stop intent; unlocked call
+  D -> H : exec.stop; account-wide confirmed absence required
+  H --> D : absence or unfinished/unknown evidence
+  D -> J : persist real result; retain unresolved claims
+end
+D -> B : separately journaled freeze of all leases and renewals
+B --> D : freeze result; delivered tokens keep vendor lifetime
+D -> SH : separately journaled close delivery and snapshot bound boards
+SH --> D : host result
+alt any part partial / refused / unknown
+  D -> J : preserve all obligations; admission remains closed
+else every part confirmed
+  D -> J : stopped; hold stays until explicit recovery
+end
+opt explicit authenticated operator recovery
+  O -> D : explicit recovery act; never automatic restart
+  D -> D : require resolved service parts and ordinary readiness before reopening
+end
+note over D,SH : Each service journals its own part; act/record/recovery formats unpublished.
 == bounded maintenance attempt ==
 alt main phone path
   A -> P : review exact content (who, actions, until when); biometric confirmation

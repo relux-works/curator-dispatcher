@@ -8,7 +8,7 @@ state "agent/1 (dispatcher-owned record; helper owns OS account ledger)" as Agen
   state "removed" as Removed
   state "failed" as Failed
   [*] --> Provisioning : admitted ordinary provision / operator-signed team bring-up
-  Provisioning --> Idle : create + binding confirmed
+  Provisioning --> Idle : trusted create + binding confirmed; workplace backend separately gated
   Provisioning --> Retiring : ordinary provisioning failed / operator-signed standing retirement
   Provisioning --> Provisioning : standing failure: reconcile / await operator-signed decision
   Idle --> Active : dispatcher commits execution claim under lock
@@ -18,7 +18,7 @@ state "agent/1 (dispatcher-owned record; helper owns OS account ledger)" as Agen
   Idle --> Retiring : ordinary retire / expiry destruction gate satisfied
   Idle --> Retiring : operator-signed standing retirement
   Retiring --> Retiring : effects pending / observations unknown or contradictory
-  Retiring --> Removed : applicable unbind, retire, identity cleanup confirmed
+  Retiring --> Removed : export recorded/waived; applicable unbind, retire, identity cleanup confirmed
   Retiring --> Failed : failed provision; applicable cleanup confirmed
 }
 state "run/1 execution claim (dispatcher-owned; enum §4.4)" as Exec {
@@ -53,8 +53,10 @@ note bottom of Agent
   R-LOCK: intent/in-flight -> unlock call -> lock/fence result; old daemon writers fenced.
   Daemon-owned supervisors run as service UID;
   launcher runs as root until agent UID exec; broker service is unprivileged.
-  Broker owns bindings/leases; launcher writes start receipt; helper confirms stop.
+  R-UNTRUSTED: class recorded, every workplace untrusted; no subscription binding/lease.
+  Broker owns trusted bindings/leases; launcher writes start receipt; helper confirms stop.
   Ordinary failed provision unbinds if bound and retires if created.
+  R-TRANSFER: export recorded or operator waiver before home deletion.
   Retirement: quiesce / declared-key cleanup / home deletion; explicit operator retention only.
   R-TIME: expiry destruction also needs trusted time + monotonic elapsed lifetime.
   R-GEN: fresh random 128-bit generations; restore requires external fence/reverse inventory.
@@ -83,6 +85,11 @@ note bottom of Exec
   Supervisor registration/loss are observations, not extra stored claim states.
 end note
 note bottom of Capacity
+  R-CEILINGS: qualified host matrix meets class minimums; no OS-name exclusion.
+  Slice 0/helper v0 refuse untrusted; R-EXEC profile required; builds/tests off-host (R-VERIFY).
+  R-STANDING: trusted host loop only; untrusted standing placement is workplace.
+  R-NET-TOOL/R-RANGE-DENY: zero-egress workplace, provider-only trusted proxy; range rule from v0.
+  R-WATCH stops one account only; R-ALLSTOP is manual hold/all stops, explicit recovery.
   Temporary closure: initial refusal / later gated queue; authority/quota never queue.
   Fresh revocation.check at prepare/dequeue/start; revoked/unavailable refuses.
   Prelaunch checks exclude the claim's own resources.
