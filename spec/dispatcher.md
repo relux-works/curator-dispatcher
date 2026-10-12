@@ -1,8 +1,12 @@
 # swarma-dispatcher: specification
 
-- **Status:** draft v0.4 (2026-10-12). Nothing is implemented.
+- **Status:** draft v0.5 (2026-10-12). Nothing is implemented.
 - **Normative language:** MUST, MUST NOT, SHOULD and MAY are used as in RFC 2119.
 - **Companions:** [swarma-user-manager](https://github.com/relux-works/swarma-user-manager) (agent accounts, the launcher, the stop operation), [swarma-credential-broker](https://github.com/relux-works/swarma-credential-broker) (bindings, caller-authorization dependencies, leases), curator-spec CIP-0011 (the Curator side), the platform architecture §7.1 (launch dispatcher), §5.1 (launch contract), §5.3 (fences and restarts), §7.2 (key keeper), §7.5 (isolation).
+
+### Revision 0.5
+
+This documentation revision applies the owner decision of 2026-10-12 on standing-session runtime: executions of standing allocations have no `max_runtime` quota or runtime deadline, and the sweep never stops them for runtime (§§3.5, 4.4, 5.3, 7.2, 8.1). Other executions retain the 4 h default and 12 h maximum. It closes R3 as owner-decided (§16), adds negative qualification rows (§15), and aligns the figures. These remain design contracts, not implementation or qualification claims.
 
 ### Revision 0.4
 
@@ -100,7 +104,7 @@ The dispatcher runs as the unprivileged service account `swarma-dispatcher`, cre
 
 ### 3.5 Quotas
 
-Configuration sets, per caller and in total: live allocations, concurrent executions, the maximum allocation lifetime and the maximum execution runtime. Requests beyond them are refused (`quota_exceeded`) — a permanent refusal, never a queueable condition.
+Configuration sets, per caller and in total: live allocations, concurrent executions, and, for ordinary allocations and their executions, the maximum allocation lifetime and the maximum execution runtime. Requests beyond the applicable quotas are refused (`quota_exceeded`) — a permanent refusal, never a queueable condition.
 
 Defaults (owner decision 2026-10-10), all configurable:
 
@@ -109,9 +113,9 @@ Defaults (owner decision 2026-10-10), all configurable:
 | concurrent executions | 2 | 6 |
 | live allocations | 4 | 16 |
 | allocation lifetime (one-shot and ordinary kept allocations) | default 24 h, maximum 7 days | — |
-| execution runtime | default 4 h, maximum 12 h | — |
+| execution runtime (all executions other than those of standing allocations) | default 4 h, maximum 12 h | — |
 
-Standing allocations cover the standing team's orchestrator and fixed roles. They have no `expires_at` and no lifetime quota. Only the operator may retire or re-create them, with a signed record (§§4.3, 5.4–5.5); the sweep never expires them (§7.2). Live-allocation and concurrency quotas still apply. This allocation-lifetime exception does not decide the execution runtime of standing sessions: the 4 h default and 12 h maximum remain unchanged pending §16's R3 question.
+Standing allocations cover the standing team's orchestrator and fixed roles, including other orchestrators and standing agents. They have no `expires_at` and no lifetime quota. Only the operator may retire or re-create them, with a signed record (§§4.3, 5.4–5.5); the sweep never expires them (§7.2). Per the owner decision of 2026-10-12 (§16, question 6), their executions MUST NOT acquire a `max_runtime` quota or runtime deadline, in either supervisor or session-host backends. The sweep MUST NOT stop them for runtime. They end only by an explicit stop (`cancel`/stop through `exec.stop`), operator action, their own exit or an incident hard stop (§5.3). Live-allocation and concurrency quotas still apply. Every other execution retains the 4 h default and 12 h maximum.
 
 The per-caller execution limit matches the host's existing rule of two runs per orchestrator.
 
@@ -159,10 +163,12 @@ When keeper integration is activated, the allocation must retain the registratio
   state:      "accepted" | "queued" | "starting" | "running" | "stopping" | "cleaning"
             | "done" | "failed" | "cancelled" | "expired",
   outcome:    { kind: "exit" | "failed" | "cancelled" | "expired" | "lost", exit_code?, signal?, stage?, code? } | null,
-  deadline:   { max_runtime, ends_at },
+  deadline?:  { max_runtime, ends_at },     // ordinary executions only; absent for standing
   parent, board_ref (opaque, kept whole),
   created_at, updated_at }
 ```
+
+An execution of a standing allocation MUST NOT carry `deadline`, `max_runtime` or `ends_at` as a runtime limit. An ordinary execution retains its runtime deadline under §3.5. Absence is the standing contract; no sentinel duration, null deadline or additional wire member is defined.
 
 ### 4.5 Effect ids and the effect table
 
@@ -224,11 +230,11 @@ An orchestrator composes its children's plans on the caller side, under its own 
 
 `start` (or the second half of `dispatch`), on an `idle` allocation owned by the caller:
 
-1. re-check the caller's authority and, for an ordinary allocation, its lifetime; take a capacity claim for one execution;
+1. re-check the caller's authority and, for an ordinary allocation, its lifetime and §3.5 runtime quota; take a capacity claim for one execution. A standing execution has no `max_runtime` quota or runtime deadline; an ordinary execution retains its runtime deadline;
 2. **claim** — under the lock, write an execution claim `{ execution_id, epoch }` and mark the allocation `running`; only one claim per allocation in v0 (`agent_busy`);
 3. **supervisor** — start the supervisor; it registers its own process identity and acknowledges durably before anything else;
 4. **launch** — the supervisor calls the launcher (`launch.start { request_id: <launch effect id>, generation, execution_id, epoch, executor, plan }`); the launcher writes a **start receipt** for that execution (pid, start time, boot id) while still root, before clearing groups, setting GID/UID and exec (helper §7); only the immutable plan is passed on FD3 and no broker connection is inherited; the supervisor records the receipt;
-5. **running** — `curator-run` in its narrow exec mode verifies the caller-composed plan, prepares its working directory in the agent's home, resolves the protected credential binding, opens its own broker connection, leases its credential and execs the harness; `max_runtime` and `cancel` lead to **stopping**;
+5. **running** — `curator-run` in its narrow exec mode verifies the caller-composed plan, prepares its working directory in the agent's home, resolves the protected credential binding, opens its own broker connection, leases its credential and execs the harness. For an ordinary execution, `max_runtime` expiry leads to **stopping**. A standing execution has no runtime deadline and ends only by an explicit stop (`cancel`/stop through `exec.stop`), operator action, its own exit or an incident hard stop; the sweep never stops it for runtime. Exit, explicit stop, operator action or an incident hard stop leads to **stopping**, with absence confirmed in step 6;
 6. **stopping** — the supervisor (or recovery) calls helper `exec.stop { request_id: <stop effect id>, generation, execution_id }`, which terminates the execution's process session and returns a termination receipt only after it has verified that no process of that execution remains;
 7. **finish** — record the outcome; the allocation returns to `idle` (ordinary kept or standing agents) or proceeds to `retiring` (ordinary `dispatch`, an expired ordinary allocation, or operator-signed retirement of a standing allocation).
 
@@ -290,7 +296,7 @@ Reconciliation of a standing allocation never initiates retirement or re-creatio
 
 ### 7.2 The sweep
 
-A timer (launchd job or systemd timer as `swarma-dispatcher`) runs the internal service-only CLI entry `swarma-dispatcher sweep` every minute in v0, directly under that service account rather than through the caller sudo entry: reconciliation, lifetimes, claim expiry and log rotation. The internal entry requires the dispatcher service account and recorded command mode. It is outside the closed public `dispatch-op/1` operation table; callers still use the no-argument sudo entry, and their `reconcile` is caller-scoped. A public sweep would need a separate versioned authorization decision. In v1 the daemon does the same internally. The sweep never expires standing allocations: they have neither `expires_at` nor a lifetime quota. It still reconciles their authorised effects and executions and maintains claims and logs. While neither sweep nor daemon runs, ordinary allocation lifetimes are not enforced; allocation status states that fact and distinguishes standing allocations, for which expiry does not apply. Execution-runtime policy remains §3.5 pending the R3 question (§16).
+A timer (launchd job or systemd timer as `swarma-dispatcher`) runs the internal service-only CLI entry `swarma-dispatcher sweep` every minute in v0, directly under that service account rather than through the caller sudo entry: reconciliation, lifetimes, claim expiry and log rotation. The internal entry requires the dispatcher service account and recorded command mode. It is outside the closed public `dispatch-op/1` operation table; callers still use the no-argument sudo entry, and their `reconcile` is caller-scoped. A public sweep would need a separate versioned authorization decision. In v1 the daemon does the same internally. The sweep never expires standing allocations: they have neither `expires_at` nor a lifetime quota. It MUST NOT stop their executions for runtime, because they carry no `max_runtime` quota or runtime deadline. Ordinary executions remain subject to §3.5's 4 h default and 12 h maximum; the sweep stops an ordinary execution whose runtime deadline has elapsed through the confirmed `exec.stop` path (§§5.3, 6). It still reconciles standing allocations' authorised effects and executions and maintains claims and logs. While neither sweep nor daemon runs, ordinary allocation lifetimes are not enforced; allocation status states that fact and distinguishes standing allocations, for which expiry does not apply.
 
 ## 8. Operations, results and authorisation
 
@@ -301,7 +307,7 @@ A discriminated union on `op`; every operation has a closed set of members, and 
 | `op` | Members | Allowed to |
 |---|---|---|
 | `provision` | `request_id`, `label`, `profile`, `harness`, `accounts`, `capabilities?`, `lifetime`, `cleanup`, `network?`, `parent?`, `grants`, `auth` | callers with `agent.spawn` |
-| `start` | `request_id`, `agent_id`, `plan`, `plan_digest`, `executor`, `max_runtime`, `board_ref?`, `auth` | the allocation's owner |
+| `start` | `request_id`, `agent_id`, `plan`, `plan_digest`, `executor`, `max_runtime?` (ordinary only), `board_ref?`, `auth` | the allocation's owner |
 | `dispatch` | the union of `provision` and `start` members except `agent_id`, plus `cleanup.retire = "on-exit"` | callers with `agent.spawn` |
 | `cancel` | `request_id`, `run_id`, `auth` | the execution's owner |
 | `retire` | `request_id`, `agent_id`, `auth` | the ordinary allocation's owner; standing retirement is operator-only with a signed record whose format is unpublished (§§5.4, 16) |
@@ -313,9 +319,11 @@ A discriminated union on `op`; every operation has a closed set of members, and 
 | `drain` (v1) | `mode: "park" \| "reject"` | operators |
 | `register_key` | `public_key` | an orchestrator allocation's own UID (§3.3) |
 
+For an ordinary allocation, omitted `max_runtime` uses §3.5's 4 h default; a supplied value is subject to the 12 h maximum and configured quotas. For a standing allocation, `max_runtime` MUST be absent; supplying it MUST be refused before launch, never used to install a deadline or silently ignored. The refusal-code mapping is unpublished (§16, question 8); no new code is asserted here. Allocation designation, not the requested duration, determines which policy applies.
+
 ### 8.2 Results
 
-`dispatch-result/1`: `{ v: 1, request_id, ok: true, result: { … record … } }` or `{ v: 1, request_id, ok: false, error: { code, message, stage? } }`. A repeat of a completed request returns the stored result with the record's **current** state. The meaning of terminal outcomes is fixed: `exit` (the harness ended), `failed` (a stage failed and cleanup is confirmed), `cancelled`, `expired` (lifetime or runtime), `lost` (the holder vanished and the execution was stopped and confirmed absent).
+`dispatch-result/1`: `{ v: 1, request_id, ok: true, result: { … record … } }` or `{ v: 1, request_id, ok: false, error: { code, message, stage? } }`. A repeat of a completed request returns the stored result with the record's **current** state. The meaning of terminal outcomes is fixed: `exit` (the harness ended), `failed` (a stage failed and cleanup is confirmed), `cancelled`, `expired` (ordinary allocation lifetime or ordinary execution runtime; neither applies to standing allocations or their executions), `lost` (the holder vanished and the execution was stopped and confirmed absent).
 
 ### 8.3 v1 socket `dispatch/1`
 
@@ -397,8 +405,12 @@ On hosted CI runners only, through the deployed clients (`curator agent-user` an
 - `dispatch`, and `provision` then `start` twice in sequence, with the broker's slice 0 and one Claude launch each;
 - authority: a copied chain from another caller, a missing or wrong signature, an unregistered key, an unconstructible request, a revoked caller grant (the agent's next lease refused), a recycled UID;
 - crashes on both sides of every acknowledgement (input, effect intent, effect result, claim, supervisor registration, start receipt, termination receipt), each followed by reconciliation;
-- cancel in every state; `max_runtime`; ordinary allocation expiry with and without the sweep; a lost supervisor with escaped descendants;
+- cancel in every state; ordinary execution `max_runtime`; ordinary allocation expiry with and without the sweep; a lost supervisor with escaped descendants;
 - standing allocations: no expiry/lifetime quota; sweep never expires them; caller `agent.spawn` cannot retire, re-create or bring up the team; absent or invalid operator signatures authorise no team effect; operator-signed retirement/re-creation only;
+- standing runtime: start without `max_runtime` creates no runtime quota or `deadline`; with the supervisor and the activated session-host backend, advance beyond both 4 h and 12 h and run repeated sweeps and recovery; no runtime stop effect or `expired` outcome, no deadline introduced on recovery;
+- standing start with any supplied `max_runtime` refuses before launch and creates no runtime deadline; refusal-code assertions await publication (§§8.1, 16);
+- ordinary runtime: omitted `max_runtime` retains the 4 h deadline, an admitted explicit 12 h retains that deadline, and a value above 12 h refuses; sweep after each admitted deadline invokes `exec.stop` and records runtime expiry only after confirmed absence; the standing exception never admits an over-limit ordinary execution or suppresses its runtime stop;
+- standing termination: explicit stop (`cancel`/stop through `exec.stop`), operator action, own exit and incident hard stop still reach confirmed absence and applicable cleanup; exemption from runtime never suppresses these paths;
 - team bring-up after wire publication: repeat and crash recovery per role reuse recorded effect IDs without duplicate allocations; unknown/contradictory observations remain pending; provisioning failure and authority loss do not automatically retire standing allocations;
 - capacity: quota 1 admits its own request and refuses a competitor; each gate; hold read failure;
 - payload bounds at, and one over, each limit;
@@ -411,11 +423,11 @@ On hosted CI runners only, through the deployed clients (`curator agent-user` an
 3. **Launch tickets (contract I4; OWNER DECISION NEEDED, dispatcher/user-manager/session-host owners):** jointly version and publish the signature domain, canonical bytes and host-role schema, then activate the gate, or leave the SH2 backend disabled (§12). No concrete ticket-signature grammar is claimed here.
 4. **Agent self-goals (contract G2; deferred SH2+ owner decision):** (a) a separate agent namespace with its own bounds, or (b) retain caller/board-only authorship. Neither requires goals or a board for host operation (§8.4).
 5. **Log-storage handoff:** retain dispatcher execution logs or transfer them to the host's durable log store when the backend activates; the ownership handoff must be specified first (§12).
-6. **Standing-session execution runtime (R3; OWNER DECISION NEEDED):** the §3.5 maximum of 12 h does not fit long-lived standing sessions held by the session host. Proposal: executions of standing allocations held by the SH2+ backend have no runtime maximum and are stopped only by the operator or by an explicit stop. This is a proposal, not a decision; §3.5's numbers remain unchanged.
+6. **Standing-session execution runtime (R3; CLOSED — owner-decided 2026-10-12):** the owner decided that the orchestrator and standing team members (other orchestrators and standing agents) have no predefined allocation expiry or maximum execution runtime; only an explicit stop or the operator stops them. This supersedes the R3 proposal and applies to executions of standing allocations in all backends, not only SH2+. They have no `max_runtime` quota or runtime deadline, and the sweep never stops them for runtime (§§3.5, 4.4, 5.3, 7.2). Own exit and incident hard stop still end an execution through confirmed absence. The 4 h default and 12 h maximum apply to every other execution.
 7. **Orchestrator child-plan access:** which profiles and environments may an orchestrator read and use for its children from its agent account, and how does its narrowed grant constrain that access? Caller-side composition with the orchestrator's own home configuration is decided (§5.2); the read/access policy is unspecified.
-8. **Standing/team wire publication:** publish the standing designation in `agent/1`, the operator-signed retirement/re-creation record, and the remaining envelope, signature grammar, transport, role matching and change semantics for the specified-but-unpublished `swarma-dispatcher team/1` (§§4.3, 5.4–5.5). Only per-role `label`, `profile`, `harness`, `accounts` and `capabilities` are specified here; no additional fields or values are asserted.
+8. **Standing/team wire publication:** publish the standing designation in `agent/1`, the operator-signed retirement/re-creation record, and the remaining envelope, signature grammar, transport, role matching and change semantics for the specified-but-unpublished `swarma-dispatcher team/1` (§§4.3, 5.4–5.5). Only per-role `label`, `profile`, `harness`, `accounts` and `capabilities` are specified here; no additional fields or values are asserted. Publish the refusal-code mapping for `start` with `max_runtime` on a standing allocation (§8.1); if an existing code cannot represent this refusal, it would need a published refusal code. No code is invented here; the runtime policy itself is decided in question 6.
 
-The executor and first consumer are decided by D-EXECUTOR, managed PATH by D-PATH, wire names by D-WIRE-NAMES, and resume compatibility by D-RESUME; their older open questions are superseded. Default quotas and ordinary allocation lifetimes are already decided and configurable (§3.5); standing allocations have no expiry/lifetime quota, while their session execution runtime remains open (R3). Interactive execution remains gated on the session host. Donor provisioning belongs to a separately specified small privileged component, not a user-manager extension (D-DONOR-PROVISIONING); variant B stays disabled until that component is specified, and remote targets remain outside this subset.
+The executor and first consumer are decided by D-EXECUTOR, managed PATH by D-PATH, wire names by D-WIRE-NAMES, and resume compatibility by D-RESUME; their older open questions are superseded. Default quotas and ordinary allocation lifetimes are already decided and configurable (§3.5); the owner decision of 2026-10-12 closes R3: standing allocations have no expiry/lifetime quota and their executions have no runtime quota/deadline. Every other execution retains the 4 h default and 12 h maximum. Interactive execution remains gated on the session host. Donor provisioning belongs to a separately specified small privileged component, not a user-manager extension (D-DONOR-PROVISIONING); variant B stays disabled until that component is specified, and remote targets remain outside this subset.
 
 ## Appendix A. Refusal codes
 

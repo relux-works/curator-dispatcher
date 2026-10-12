@@ -41,6 +41,8 @@ note bottom of CORE
   never relaunch, release capacity or declare cleanup successful.
   Ordinary provision failure: unbind if bound, retire if created; confirm cleanup.
   Standing: no expiry/lifetime quota; sweep never expires it.
+  Standing executions: no max_runtime quota or deadline; sweep never stops them for runtime.
+  Ordinary executions: default 4 h, maximum 12 h; runtime expiry still stops (§§3.5, 7.2).
   Standing retirement/re-creation only with operator-signed record.
   Operator-signed team/1 bring-up is specified-but-unpublished (§5.5).
   Root caller request ID is correlation, not a shared receiver key.

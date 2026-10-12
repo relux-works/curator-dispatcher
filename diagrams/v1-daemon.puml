@@ -37,6 +37,12 @@ else temporary capacity closure
 end
 == admitted request only ==
 D -> D : provision; owned execution claim; journal distinct effects
+note over D
+  Standing start: max_runtime absent; supplied duration refuses before launch.
+  Standing execution: no runtime quota or deadline in either backend.
+  Ordinary execution: default 4 h, maximum 12 h (§§3.5, 8.1).
+  Standing max_runtime refusal-code mapping is unpublished (§16, question 8).
+end note
 alt SH2+ backend gates published and activated (§§12, 14)
   D -> SH : start {logical_session_id, execution_id, controller_epoch, op_id, ticket}
   alt fence / current controller epoch invalid
@@ -58,14 +64,14 @@ alt SH2+ backend gates published and activated (§§12, 14)
     are unspecified in spec §§12, 16; backend remains disabled.
     Dispatcher only issues ticket; host presents it; user-manager launcher redeems.
     Ownership handoffs must be specified before activation.
-    Standing-session execution runtime is open: R3 proposal in §16; §3.5 unchanged.
+    Standing runtime: no max_runtime quota or deadline; R3 owner-decided 2026-10-12 (§16).
     SH1 behavior is unspecified in spec §12; no SH1 migration is asserted.
     Log handoff is unspecified in spec §16 (open question 5).
   end note
 else default supervisor backend
   D -> D : service-UID supervision -> root launcher -> agent-UID curator-run\n(§5.3 intake / Decision 0021 / qualification gate)
 end
-opt stop / cancel / recovery for an execution that launched
+opt explicit stop (cancel) / operator action / exit / incident hard stop / recovery; runtime only for ordinary executions
   D -> H : exec.stop (journaled E-stop; own generation/execution)
   alt termination observation unknown / contradictory
     D -> D : retain state + capacity; same-effect retry; never relaunch
@@ -77,6 +83,7 @@ end
 D --> C : events / current execution record; outcome separate from state
 note over D
   Internal sweep never expires standing allocations; no lifetime quota.
+  It never stops standing executions for runtime; ordinary deadlines still stop (§7.2).
   Standing retirement/re-creation is operator-only with signed record (§5.4).
   Distinct downstream effect IDs, retries reuse IDs.
   v0 -> v1: stop admission, exclusive state, check/migrate, drain v0 supervisors,

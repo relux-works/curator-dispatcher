@@ -55,6 +55,9 @@ note over D,J
   v0 invocation, v1 startup/periodic, explicit reconcile (§7.1).
   v0 internal service-only sweep every minute; v1 daemon internal (§7.2).
   Standing: no expires_at or lifetime quota; sweep never expires it.
+  Standing executions: no max_runtime quota or deadline, including after recovery.
+  Sweep never stops them for runtime; ordinary executions keep 4 h / 12 h,
+  and sweep stops them through exec.stop when their runtime deadline elapses (§7.2).
   Standing retirement/re-creation requires operator-signed record (§5.4).
   An absent account never authorises automatic standing re-creation.
   Intent is journaled before every external effect (§4.1).

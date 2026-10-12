@@ -80,6 +80,12 @@ end
 == start (§5.3): only an admitted idle owned allocation ==
 C -> D : start with separate root R-start (dispatch keeps R)
 D -> D : recheck authority / lifetime; capacity claim (v0 refuse / v1 queue)
+note over D,J
+  This figure starts ordinary executions: default 4 h, maximum 12 h.
+  Record runtime deadline; sweep stops ordinary executions at that deadline (§7.2).
+  Standing start is separate: max_runtime absent; no runtime quota or deadline.
+  A supplied standing max_runtime refuses before launch; code mapping unpublished (§16).
+end note
 alt busy, expired, unowned or invalid authority
   break start refused
     D --> C : typed refusal; no launch
@@ -110,7 +116,7 @@ else launch initiated
     E -> E : verify only; prepare agent-home working directory; protected binding
     E -> B : own connection; lease (caller dependency rechecked)
     E -> E : qualified injection; exec harness
-    alt exit, cancel or max_runtime
+    alt exit, explicit stop (cancel), operator action, incident hard stop or ordinary max_runtime deadline
       S -> H : exec.stop {request_id: E-stop, generation, execution_id}
     else supervisor known absent
       D -> H : recovery exec.stop with same E-stop; record lost after confirmation
@@ -163,6 +169,7 @@ note over D,J
   E-create, E-bind, E-launch, E-stop, E-unbind, E-retire are distinct;
   retries reuse their ID; root (caller,R) retained only as correlation.
   Standing team lifecycle is bring-up-team.puml (§5.5): no allocation expiry;
+  standing executions have no max_runtime quota or deadline; sweep never stops them for runtime.
   no automatic retirement on failure, exit or authority loss.
   Only operator-signed standing retirement/re-creation (§5.4).
   Outcome kind is separate from run state (§4.4 / §8.2).

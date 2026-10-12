@@ -49,6 +49,8 @@ note over O,J
   Repeated bring-up and recovery reuse recorded effects: one logical bring-up effect / allocation per role.
   Retirement / re-creation requires the operator's signed record (§5.4).
   Sweep never expires standing allocations; execution start is separate (§5.3).
+  Their executions have no max_runtime quota or deadline; sweep never stops them for runtime.
+  Explicit stop, operator action, own exit or incident hard stop still ends an execution.
   Signature grammar, remaining fields, transport, role matching and change handling,
   standing designation encoding and signed-record format are unspecified (§16).
   This view does not publish request members, refusal codes or result values.

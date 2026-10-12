@@ -14,7 +14,8 @@ Queued --> Starting : authority/window/quota + all gates rechecked
 Queued --> Queued : temporary closure / operator drain park
 Starting --> Running : supervisor registered; launcher receipt recorded
 Starting --> Stopping : cancel during/after launch; wait for receipt or refusal
-Running --> Stopping : exit / cancel / max_runtime
+Running --> Stopping : exit / explicit stop (cancel) / operator action / incident hard stop
+Running --> Stopping : ordinary execution only: max_runtime deadline elapsed
 Running --> Stopping : supervisor known absent; recovery exec.stop; outcome lost
 Stopping --> Stopping : termination missing: repeat same E-stop\nunknown / contradictory: retain state and claim
 Stopping --> Cleaning : stop / absence confirmed; record outcome\nordinary kept / standing idle; retirement only as authorised (§5.4)
@@ -39,7 +40,10 @@ note left of Queued
 end note
 note right of Terminal
   Standing allocation exit does not retire it; operator-signed retirement only.
-  Execution-runtime limits remain §3.5; SH2+ standing runtime is open (R3, §16).
+  Standing execution: no max_runtime quota or runtime deadline (§§3.5, 4.4).
+  Sweep never stops it for runtime; applies in all backends.
+  Ordinary execution: default 4 h, maximum 12 h; sweep stops at deadline (§7.2).
+  R3 closed by owner decision 2026-10-12 (§16).
   Stored outcome is separate from run state:
   exit | failed | cancelled | expired | lost (§§4.4, 8.2).
   lost is an outcome, not a stored state.

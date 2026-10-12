@@ -32,7 +32,9 @@ state "run/1 execution claim (dispatcher-owned; enum §4.4)" as Exec {
   Claimed --> Absent : cancel before launch / no supervisor registration on reconcile
   Launching --> Launching : receipt unknown; cancel waits; never relaunch
   Launching --> Started : launcher receipt known and recorded
-  Started --> ClaimStopping : cancel / runtime / stop / supervisor known absent
+  Started --> ClaimStopping : explicit stop (cancel) / operator action / exit / incident hard stop
+  Started --> ClaimStopping : ordinary execution only: runtime deadline elapsed
+  Started --> ClaimStopping : supervisor known absent
   ClaimStopping --> ClaimStopping : receipt missing -> retry same E-stop\nunknown/contradictory -> retain claim
   ClaimStopping --> Absent : helper confirms no execution process remains
 }
@@ -61,6 +63,8 @@ note bottom of Agent
 end note
 note bottom of Exec
   v0: at most one claim per allocation; competing start refuses agent_busy.
+  Standing executions have no max_runtime quota or runtime deadline.
+  Sweep never stops them for runtime; ordinary executions keep 4 h / 12 h (§3.5).
   Unknown/contradictory evidence never becomes absent (§4.6).
   Exact launcher-refusal claim transition is unspecified in spec §§4.4, 5.3.
   Supervisor registration/loss are observations, not extra stored claim states.
