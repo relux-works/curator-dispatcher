@@ -1,11 +1,11 @@
 @startuml dispatch-lifecycle
-title M-DP1: v0 / v1 ordinary allocation and one-shot lifecycle (draft; §5.3 intake gate)
+title M-DP1: service slices ordinary allocation and one-shot lifecycle (draft; §5.3 intake gate)
 participant "Caller process\ncaller UID / principal + key" as C
 participant "Dispatcher core\nservice UID swarma-dispatcher" as D
 database "Dispatcher-owned state\ninputs, records, effects, claims, journal, logs" as J
 participant "swarma-user-manager\nroot; owns account ledger / stop evidence" as H
 participant "Credential broker\nunprivileged; owns binding / lease / grant state" as B
-participant "Supervisor\nservice UID; v0 detached / v1 in daemon" as S
+participant "Supervisor\nservice UID; daemon-owned" as S
 participant "swarma-user-launcher\nroot; writes start receipt" as L
 participant "curator-run -> harness\nagent UID; agent home / working directory" as E
 == prepare and provision (§5.1) ==
@@ -14,26 +14,31 @@ note right of C
   Orchestrator caller: own agent account and Curator home configuration (§5.2).
   Child profile/environment access and narrowed-grant constraints are open (§16).
 end note
-C -> D : signed provision or dispatch; caller-scoped root R
-D -> J : reconcile first under lock; replay journal (§7.1)
+D -> J : startup recovery complete; publish ready before admission
+C -> D : dispatch/1 signed provision or dispatch; caller-scoped root R
+D -> J : reconcile under lock (§7.1)
 D -> D : principal/key/signature/chains, quotas, leaf constructibility, digest
-alt prepare refused
+D -> B : revocation.check exact chains, context prepare
+B --> D : not_revoked / revoked / unavailable + revocation sequence
+alt prepare refused, revoked or unavailable
   break prepare refusal
     D --> C : typed refusal; no external effect
   end
 else prepare accepted
   D -> J : write immutable input/1
   alt temporary capacity closure
-    alt v0
+    alt initial slice
       break capacity refusal
         D --> C : capacity:*; no provisioning/start
       end
-    else v1
+    else later queue capability
       D -> J : durable bounded fair queue
       D --> C : queued handle
       ... gate opens ...
       D -> D : recheck principal, authority/window, quota and all gates
-      alt permanent refusal or expired window
+      D -> B : revocation.check exact chains, context dequeue
+      B --> D : not_revoked / revoked / unavailable + sequence
+      alt permanent refusal, expired window, revoked or unavailable
         break dequeue refused
           D --> C : refusal (never queue authority/quota failures)
         end
@@ -48,7 +53,7 @@ else prepare accepted
   D -> H : user.create {request_id: E-create, kind: agent}
   alt create observation unknown / contradictory
     break reconcile before further effects
-      D -> J : provisioning pending; query ledger by E-create; never create again until known
+      D -> J : provisioning pending; effect.observe E-create / operation / canonical digest; never automatic new create
     end
   else account created
     H --> D : uid, generation
@@ -70,7 +75,8 @@ else prepare accepted
     break recover failed / uncertain provisioning
       D -> J : known refusal -> retiring; unknown -> observe by E-bind first
       note over D,B
-        Known absent + still-valid request may bind; otherwise retire (§7.1).
+        Effect absence + fresh authority/verdict may resume only the same admitted bind (§7.1).
+        No automatic new effect; standing failures stay pending for operator decision.
         Unbind if bound, retire if created, each confirmed before failed (§5.1).
         Unknown is never treated as absent (§4.6).
       end note
@@ -79,7 +85,7 @@ else prepare accepted
 end
 == start (§5.3): only an admitted idle owned allocation ==
 C -> D : start with separate root R-start (dispatch keeps R)
-D -> D : recheck authority / lifetime; capacity claim (v0 refuse / v1 queue)
+D -> D : recheck authority / lifetime; capacity claim (initial refusal / later gated queue)
 note over D,J
   This figure starts ordinary executions: default 4 h, maximum 12 h.
   Record runtime deadline; sweep stops ordinary executions at that deadline (§7.2).
@@ -89,6 +95,13 @@ end note
 alt busy, expired, unowned or invalid authority
   break start refused
     D --> C : typed refusal; no launch
+  end
+end
+D -> B : revocation.check exact chains, context start
+B --> D : not_revoked / revoked / unavailable + revocation sequence
+alt revoked / unavailable
+  break no start effect
+    D --> C : refuse; no launch
   end
 end
 D -> J : under lock claim {execution_id, epoch}; allocation running
@@ -110,8 +123,12 @@ else launch initiated
     L --> S : refusal
     S -> J : failed stage; confirm absence and applicable cleanup
   else launch accepted
-    L -> L : validate generation / executor / home; write receipt while root
-    L -> E : reset env/FDs; clear groups; set GID/UID; exec; immutable plan FD3
+    L -> L : user-manager §7 R-FD3 lifecycle; scrub untrusted inherited FDs first
+    L -> L : validate generation / executor / home; retain generation lock and verified executable
+    L -> L : stage bounded immutable FD3; root receipt; complete UID/GID transition
+    L -> L : release generation lock after completed transition; retain executable until exec
+    L -> E : staged immutable read-only FD3; verified executable retained until exec
+    note over L,E : Executor receives only 0-2 and FD3; internal handles close at last use/exec and on failure.
     S -> J : start receipt {pid, start_time, boot_id}; running
     E -> E : verify only; prepare agent-home working directory; protected binding
     E -> B : own connection; lease (caller dependency rechecked)
@@ -149,7 +166,8 @@ opt ordinary dispatch on-exit, retirement, expiry or failed provisioning
   end
   opt account was created
     D -> J : journal E-retire intent
-    D -> H : user.retire {request_id: E-retire, home: archive | delete}
+    D -> H : user.retire {request_id: E-retire, home: delete}
+    note over D,H : User-manager retirement: quiesce, declared-key cleanup, home deletion; explicit operator retention separate.
     alt retirement confirmed
       H --> D : confirmation
     else unknown / refused

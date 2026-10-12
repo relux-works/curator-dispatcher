@@ -1,5 +1,5 @@
 @startuml agent-claim-states
-title M-DP2: allocation, execution claim and capacity ownership, v0 / v1 (draft)
+title M-DP2: allocation, execution claim and capacity ownership, service slices (draft)
 state "agent/1 (dispatcher-owned record; helper owns OS account ledger)" as Agent {
   state "provisioning" as Provisioning
   state "idle" as Idle
@@ -50,10 +50,11 @@ state "Capacity claim (§9; conceptual ownership, not a stored state enum)" as C
 note bottom of Agent
   Dispatcher service UID swarma-dispatcher owns persistent agent/run records,
   immutable inputs, effects, journal and capacity claims; state changes hold lock.
-  v0 detached supervisor / v1 daemon supervisor run as service UID;
+  Daemon-owned supervisors run as service UID;
   launcher runs as root until agent UID exec; broker service is unprivileged.
   Broker owns bindings/leases; launcher writes start receipt; helper confirms stop.
   Ordinary failed provision unbinds if bound and retires if created.
+  Retirement: quiesce / declared-key cleanup / home deletion; explicit operator retention only.
   Standing designation retained; encoding unpublished (§§4.3, 16).
   Standing: no expires_at or lifetime quota; sweep never expires it.
   Only operator-signed retirement or re-creation; no automatic replacement.
@@ -62,7 +63,7 @@ note bottom of Agent
   standing revocation is operator-only (§14); unknown/refused revocation pending.
 end note
 note bottom of Exec
-  v0: at most one claim per allocation; competing start refuses agent_busy.
+  At most one claim per allocation; competing start refuses agent_busy.
   Standing executions have no max_runtime quota or runtime deadline.
   Sweep never stops them for runtime; ordinary executions keep 4 h / 12 h (§3.5).
   Unknown/contradictory evidence never becomes absent (§4.6).
@@ -70,12 +71,13 @@ note bottom of Exec
   Supervisor registration/loss are observations, not extra stored claim states.
 end note
 note bottom of Capacity
-  Temporary closure: v0 refusal / v1 queue; authority/quota never queue.
+  Temporary closure: initial refusal / later gated queue; authority/quota never queue.
+  Fresh revocation.check at prepare/dequeue/start; revoked/unavailable refuses.
   Prelaunch checks exclude the claim's own resources.
   Claim-expiry transition details and persisted capacity-state enum
   are unspecified in spec §§7.2, 9; expiry alone is not proof of absence.
   Sweep owns ordinary allocation lifetimes; never expires standing allocations.
-  v0 service-only every minute; v1 internal daemon.
+  Internal daemon sweep every minute.
   Capacity-claim expiry is distinct from allocation expiry.
   No sweep running -> status says ordinary lifetimes are unenforced (§7.2).
 end note

@@ -1,5 +1,5 @@
 @startuml reconcile
-title Companion to M-DP1 / M-DP2: v0 / v1 reconciliation (draft)
+title Companion to M-DP1 / M-DP2: service slices reconciliation (draft)
 participant "Dispatcher core\nservice UID swarma-dispatcher" as D
 database "Dispatcher-owned journal, effects,\ninput/agent/run records and claims" as J
 participant "swarma-user-manager\nroot; account ledger / stop evidence" as H
@@ -7,16 +7,24 @@ participant "Credential broker\nunprivileged; binding / grant / lease owner" as 
 participant "Process evidence\nsupervisor service UID / executor agent UID" as P
 D -> J : lock; replay journal; list non-terminal records
 loop each allocation / execution, state by state (§7.1)
-  D -> H : observe generation, create effect, start/termination receipts
-  D -> B : observe binding by effect ID
+  D -> H : effect.observe original request_id / operation / canonical argument digest
+  H --> D : one of six states; recorded includes result + current target state
+  D -> H : observe generation and qualified start/termination receipts
+  D -> B : effect.observe bind/unbind; original request_id / operation / digest
+  B --> D : one of six states; unbind removal/tombstone evidence
   D -> P : observe supervisor registration / execution identity
   alt any observation unknown or contradictory
     D -> J : retain state and capacity; retry observation later\nnever relaunch or declare cleanup successful
   else provisioning; create effect unknown before query
-    D -> J : use known ledger answer; never create again until known
+    D -> J : apply R-OBS; rolled_back/not_recorded never automatic new create
   else provisioning; account present; bind known absent after query
     alt request still valid
-      D -> B : bind with journaled effect ID
+      D -> B : revocation.check exact chains, context prepare
+      alt not_revoked and other authority checks pass
+        D -> B : resume only same admitted bind effect; no automatic new effect
+      else revoked / unavailable
+        D -> J : no forward effect; retain pending / authorized cleanup
+      end
     else invalid authority/window
       alt ordinary allocation
         D -> J : retire; applicable cleanup must be confirmed
@@ -25,17 +33,18 @@ loop each allocation / execution, state by state (§7.1)
       end
     end
   else idle; binding known absent; ordinary not expired or standing
-    D -> D : fresh authority checks
-    alt authority valid
-      D -> B : rebind
-    else authority gone
+    D -> D : fresh explicit authority needed for any new bind
+    D -> B : revocation.check exact chains, context prepare
+    alt authority valid and not_revoked
+      D -> B : bind only under explicit fresh admission; no automatic new effect from absence
+    else authority gone / revoked / unavailable
       alt ordinary allocation
         D -> J : retire
       else standing allocation
         D -> J : no forward execution; await operator-signed decision; no retirement
       end
     end
-  else claimed; no supervisor registration
+  else claimed; supervisor registration conclusively absent
     D -> J : mark execution claim absent; no later launch
   else launching; receipt unknown
     D -> J : wait for receipt/launcher answer; cancel also waits; never relaunch
@@ -45,15 +54,20 @@ loop each allocation / execution, state by state (§7.1)
     D -> J : record lost after confirmation
   else stopping; termination receipt missing
     D -> H : repeat exec.stop with same effect ID
-  else retiring / cleaning; pending authorised effects
+  else retiring / cleaning; pending authorized effects with known observations
     D -> B : repeat applicable unbind with same effect ID
     D -> H : retire only after unbind confirmed; same retire effect ID
     D -> J : applicable one-shot identity cleanup after retirement (§14)\nterminal only after all required confirmations
   end
 end
 note over D,J
-  v0 invocation, v1 startup/periodic, explicit reconcile (§7.1).
-  v0 internal service-only sweep every minute; v1 daemon internal (§7.2).
+  Daemon startup before readiness/admission, periodic internal sweep, explicit reconcile (§7.1).
+  Internal daemon sweep every minute (§7.2); absent/unready daemon refuses new admission.
+  R-OBS: recorded -> known present/absent by current target state.
+  rolled_back / not_recorded -> known absent for that effect only; never automatic new create.
+  pending / unavailable -> unknown; contradictory -> contradictory.
+  Missing/expired evidence is unavailable, never absence; read serialized with receiver journal.
+  Only original receiver caller or operator may observe, including after initiating grant expiry.
   Standing: no expires_at or lifetime quota; sweep never expires it.
   Standing executions: no max_runtime quota or deadline, including after recovery.
   Sweep never stops them for runtime; ordinary executions keep 4 h / 12 h,

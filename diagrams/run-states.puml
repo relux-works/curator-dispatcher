@@ -1,16 +1,16 @@
 @startuml run-states
-title M-DP2: execution run/1 states, v0 / v1 (draft; one-shot intake gated)
+title M-DP2: execution run/1 states, service slices (draft; one-shot intake gated)
 state "accepted" as Accepted
-state "queued (v1 only)" as Queued
+state "queued (later capability)" as Queued
 state "starting" as Starting
 state "running" as Running
 state "stopping" as Stopping
 state "cleaning" as Cleaning
 state "Terminal run state\ndone | failed | cancelled | expired" as Terminal
 [*] --> Accepted : dispatcher accepts immutable input
-Accepted --> Queued : v1 temporary capacity closure
-Accepted --> Starting : authority + capacity admitted; execution claim
-Queued --> Starting : authority/window/quota + all gates rechecked
+Accepted --> Queued : later queue capability: temporary capacity closure
+Accepted --> Starting : authority + capacity admitted; fresh revocation.check(start); execution claim
+Queued --> Starting : authority/window/quota + all gates rechecked; fresh revocation.check(dequeue)
 Queued --> Queued : temporary closure / operator drain park
 Starting --> Running : supervisor registered; launcher receipt recorded
 Starting --> Stopping : cancel during/after launch; wait for receipt or refusal
@@ -24,7 +24,7 @@ Cleaning --> Terminal : applicable cleanup confirmed (§§5.4, 7.1)
 Terminal --> [*]
 note right of Starting
   Owner: dispatcher service UID swarma-dispatcher.
-  v0 detached supervisor; v1 supervisor in daemon, same UID.
+  Daemon-owned supervisor, same UID.
   Launcher is root until exec under agent UID.
   Cancel before launch marks claim absent; launcher never called.
   Unknown start: wait for receipt/answer, never launch again.
@@ -32,8 +32,8 @@ note right of Starting
   unspecified in spec §5.3; no extra stored state is invented.
 end note
 note left of Queued
-  v0 capacity closes -> refusal, no queued state.
-  Quota / authority failures refuse in both versions, never queue.
+  Initial capacity closes -> refusal, no queued state.
+  Quota / authority failures refuse in every slice, never queue.
   Cancel, window expiry (expired_in_queue), drain reject:
   exact run-state edges are unspecified in spec §§4.4, 9.
   No direct terminal edge bypassing cleanup is asserted.

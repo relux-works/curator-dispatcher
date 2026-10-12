@@ -1,8 +1,8 @@
 @startuml storage-layout
 skinparam componentStyle rectangle
-title M-DP3: dispatcher storage ownership and durable ordering, v0 / v1 (draft)
-component "swarma-dispatcher process\nv0 command / v1 daemon\nservice UID swarma-dispatcher" as D
-component "Supervisor\nv0 detached / v1 in daemon\nsame service UID" as S
+title M-DP3: dispatcher storage ownership and durable ordering, service slices (draft)
+component "swarma-dispatcher process\nservice daemon from slice 0\nservice UID swarma-dispatcher" as D
+component "Supervisor\ndaemon-owned\nsame service UID" as S
 folder "Service-private state root (dispatcher-owned)\n/opt/swarma/services/swarma-dispatcher/state\nmode 0700 (§4.1)" as ROOT {
   artifact "Immutable input/1\ncaller principal + root request_id, canonical request,\nplan bytes, full caller chain, digests (§4.2)" as INPUT
   artifact "agent/1 allocations\nuid + generation, binding / leaf / caller chain IDs,\nregistered caller key, ordinary expiry / standing designation, cleanup (§4.3)" as AG
@@ -10,22 +10,23 @@ folder "Service-private state root (dispatcher-owned)\n/opt/swarma/services/swar
   artifact "Effect table\nid, component, operation, intent, result, observation (§4.5)" as EFFECT
   artifact "Journal\nappend + flush before external effect; replay at startup" as JOURNAL
   artifact "Index + capacity claims\nowned resources, expires_at (§9)" as CLAIM
+  artifact "Host admission permit (SH2+ gated)\nbound session / execution / controller epoch / op_id; encoding unpublished (§12)" as PERMIT
   artifact "Dispatcher key + lock (§4.1)\nall state changes / reconciliation hold lock" as KEY
   artifact "Bounded private executor output logs (§§6, 13)" as LOG
 }
-folder "v1 runtime socket directory\n/opt/swarma/run/dispatcher/ (§8.3)" as SOCKET
+folder "Runtime socket directory from slice 0\n/opt/swarma/run/dispatcher/ (§8.3)" as SOCKET
 component "swarma-user-manager (root)\nowns OS account ledger / termination evidence" as H
 component "swarma-user-launcher (root until drop)\nwrites start receipt before agent UID exec" as L
 component "Credential broker (unprivileged service)\nowns bindings, grants/revocations, leases, credentials" as B
 component "curator-run -> harness (agent UID)\nagent-home working directory; own broker connection" as E
 D --> ROOT : owned state; configuration selects root\nnever inherited HOME
-D --> SOCKET : v1 only; peer authentication\nno fallback on auth/version/malformed reply
+D --> SOCKET : all slices; peer authentication\nno fallback on auth/version/malformed reply
 S --> RUN : durable registration before launch\nrecord launcher / stop receipts
 S --> LOG : bounded output
 D --> H : journal intent -> effect -> record result
 D --> B : journal intent -> bind/unbind -> record result
 S --> L : journaled launch intent; immutable plan FD3
-L --> E : root receipt first; reset; clear groups; set GID/UID; exec
+L --> E : user-manager §7 descriptor lifecycle (R-FD3)\nroot receipt; UID/GID drop; read-only staged FD3; verified exec
 E --> B : own authenticated lease connection
 note bottom of ROOT
   Record replacement: temporary file -> flush -> rename -> directory flush.
@@ -37,7 +38,8 @@ note bottom of ROOT
   Standing run/1: no runtime deadline or max_runtime quota; ordinary runs keep 4 h / 12 h.
   Sweep never stops standing executions for runtime (§§3.5, 4.4, 7.2).
   Only operator-signed retirement/re-creation (§§4.3, 5.4); never sweep expiry.
-  Unbind then authorised account retirement; applicable one-shot identity revocation
+  Unbind then quiesce / declared-key cleanup / home deletion;
+  explicit operator retention has no confidentiality guarantee (§5.4); applicable one-shot identity revocation
   is a separate confirmed effect after retirement (§§5.4, 14).
   Subfile names, per-file modes/groups and retention/deletion rules
   are unspecified in spec §§4.1, 6, 13; labels are logical records, not paths.
@@ -45,9 +47,11 @@ end note
 note right of SOCKET
   Socket basename, owner/group/mode details are unspecified in spec §8.3.
   Broker service UID spelling is unspecified in spec §3.1.
-  Refuse mode/state-version mismatch (§11); rollback reverses activation.
-  v1 activation: stop admission, exclusive state, check/migrate,
-  drain v0 supervisors, reconcile, record daemon mode, publish ready.
+  Initial activation: closed admission, compatible state, recover, publish ready.
+  Maintenance: bounded operator attempt; close admission, inventory, authorized exec.stop,
+  confirmed absence/reconciliation before mode/schema/binary change; no live adoption.
+  Unknown/refused stop defers change; standing allocations and identities retained.
+  Rollback keeps later records and requires compatibility (§11).
 end note
 note bottom of E
   §5.3 one-shot intake/qualification gate remains closed until published.
@@ -57,6 +61,6 @@ note bottom of E
 end note
 legend
   Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#41-state-directory §4.1 state directory]]
-  [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#83-v1-socket-dispatch1 §8.3 socket]] / §§6, 7.1, 11
+  [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#83-socket-dispatch1 §8.3 socket]] / §§6, 7.1, 11
 endlegend
 @enduml

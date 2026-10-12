@@ -1,0 +1,61 @@
+@startuml activation
+title Companion to M-DP3: service activation and bounded operator maintenance (§11)
+actor "Operator" as O
+participant "Dispatcher service\nservice UID swarma-dispatcher" as D
+database "Durable state\njournal, effects, claims, maintenance progress" as J
+participant "swarma-user-manager\nroot; exec.stop and absence evidence" as H
+participant "Service installer / manager" as I
+== initial activation, slice 0 ==
+I -> D : install/start Unix-socket service; admission closed
+D -> J : exclusive state; validate compatibility; replay journal
+D -> D : reconcile effects, receipts and process evidence
+alt recovery unresolved / unknown / contradictory
+  D -> D : remain unready; refuse admission without fallback
+else recovery resolved
+  D -> D : publish readiness; open admission
+end
+== bounded maintenance attempt ==
+O -> D : explicit authorized maintenance with selected executions
+note over O,D : Authorization, deadline/progress and restart-review encoding remain unpublished (§16).
+D -> D : close new admission
+D -> J : durable inventory and selected-stop intent
+loop selected affected executions, within maintenance attempt deadline
+  D -> J : journal stop intent with stable effect ID
+  D -> H : exec.stop through dispatcher's authority; generation + execution identity
+  alt stop refused / unknown or process absence unconfirmed
+    D -> J : preserve unresolved stop and claim; defer maintenance
+  else confirmed no execution process remains
+    H --> D : termination receipt
+    D -> J : record absence/outcome; reconcile effects/receipts
+  end
+end
+alt deadline exhausted / incomplete reconciliation / any affected process not confirmed absent
+  D -> D : defer with admission closed; no mode/schema/binary change
+  D --> O : durable progress and unresolved obligations for review/resumption
+else all affected executions confirmed absent and reconciled
+  D -> J : retain standing allocations and identities; persist intended restarts for review
+  D -> I : exclusive state ownership; validate reader/writer compatibility
+  I -> I : admitted backend-mode / mutable-state migration / binary swap
+  I -> D : start selected compatible service with admission closed
+  D -> J : recover/reconcile; retain all later durable records
+  alt recovery / compatibility unresolved
+    D -> D : remain closed; rollback uses same absence and compatibility fences
+  else recovery resolved
+    D -> D : publish readiness; open admission
+  end
+end
+opt operator-reviewed restart
+  O -> D : fresh authority and admitted plan/transport
+  D -> D : fresh prepare/start checks, including revocation.check
+  D -> D : start only admitted rows; unsupported rows remain visibly stopped
+end
+note over D,J
+  Maintenance deadline bounds the attempt, never standing execution lifetime.
+  No standing retirement/identity revocation, automatic expiry or live adoption.
+  Queue drain alone never stops executions. No snapshot rollback repair.
+  Native resume is gated by §12; no seamless continuation is promised.
+end note
+legend
+  Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#11-installation-and-activation §11 activation/maintenance]] / §§7, 8.1, 16
+endlegend
+@enduml

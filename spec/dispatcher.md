@@ -1,8 +1,12 @@
 # swarma-dispatcher: specification
 
-- **Status:** draft v0.5 (2026-10-12). Nothing is implemented.
+- **Status:** draft v0.6 (2026-10-12). Nothing is implemented.
 - **Normative language:** MUST, MUST NOT, SHOULD and MAY are used as in RFC 2119.
 - **Companions:** [swarma-user-manager](https://github.com/relux-works/swarma-user-manager) (agent accounts, the launcher, the stop operation), [swarma-credential-broker](https://github.com/relux-works/swarma-credential-broker) (bindings, caller-authorization dependencies, leases), curator-spec CIP-0011 (the Curator side), the platform architecture §7.1 (launch dispatcher), §5.1 (launch contract), §5.3 (fences and restarts), §7.2 (key keeper), §7.5 (isolation).
+
+### Revision 0.6
+
+This documentation revision applies the accepted review findings of 2026-10-12: the Unix-socket service starts in slice 0 (F-5); dispatcher-owned `host_start` and the host admission permit replace launch tickets (F-4); operator maintenance has a bounded stop-and-reconcile attempt (F-2); orchestrator delegation is requester-signed and recursive provisioning stays gated (F-3); admission uses the broker's `revocation.check` verdict (F-8); receiver-owned `effect.observe` states map to the four reconciliation classes (F-10); retirement references deletion and explicit operator retention in the user manager (F-1). It aligns every affected figure and lists unpublished formats in §16. These remain design contracts, not implementation or qualification claims.
 
 ### Revision 0.5
 
@@ -10,11 +14,11 @@ This documentation revision applies the owner decision of 2026-10-12 on standing
 
 ### Revision 0.4
 
-This documentation revision applies the owner decisions of 2026-10-12: standing team allocations have no expiry or lifetime quota and only the operator retires or re-creates them with a signed record; an operator-signed team description brings them up idempotently (§§3.5, 4.3, 5.4–5.5, 7). It aligns launch-ticket redemption with the user-manager launcher (§12), states caller-side plan composition by an orchestrator in its agent account (§5.2), and records the standing-session runtime proposal and unpublished formats as open questions (§16). The execution-runtime limits are unchanged. These remain design contracts, not implementation or qualification claims.
+This documentation revision applies the owner decisions of 2026-10-12: standing team allocations have no expiry or lifetime quota and only the operator retires or re-creates them with a signed record; an operator-signed team description brings them up idempotently (§§3.5, 4.3, 5.4–5.5, 7). It states caller-side plan composition by an orchestrator in its agent account (§5.2), and records the standing-session runtime proposal and unpublished formats as open questions (§16). The execution-runtime limits are unchanged. These remain design contracts, not implementation or qualification claims.
 
 ### Revision 0.3
 
-This documentation revision aligns R-DP1 with the [platform contract table](https://github.com/relux-works/curator/blob/177cb554/.research/261010_platform-contract-table.md), the [docs audit](https://github.com/relux-works/curator/blob/48789217/.research/261010_platform-docs-audit.md) and the owner decisions of 2026-10-10/11. It separates root correlation from effect IDs, v0 capacity refusal from v1 queueing, and one-shot execution from session holding; it records the narrow identity cleanup authority and the remaining owner questions (§16). These are design contracts, not claims of implementation or qualification.
+This documentation revision aligns R-DP1 with the [platform contract table](https://github.com/relux-works/curator/blob/177cb554/.research/261010_platform-contract-table.md), the [docs audit](https://github.com/relux-works/curator/blob/48789217/.research/261010_platform-docs-audit.md) and the owner decisions of 2026-10-10/11. It separates root correlation from effect IDs, initial capacity refusal from later queueing, and one-shot execution from session holding; it records the narrow identity cleanup authority and the remaining owner questions (§16). These are design contracts, not claims of implementation or qualification.
 
 ### Revision 0.2
 
@@ -27,8 +31,8 @@ An architecture review on 2026-10-09 (0 P0, 15 P1, 3 P2) kept the module split a
 - separates **agent allocations** (`agent/1`) from **executions** (`run/1`), so `provision` and repeated `start` have a lifecycle (§5);
 - replaces stop-by-signal-through-sudo with an execution claim, a launcher start receipt and the helper's authorised `exec.stop` (§6);
 - uses owned capacity claims and the architecture's host gates (§9);
-- publishes one payload budget and complete schemas for the v0 command and the v1 socket (§8, §10);
-- defines the v0→v1 activation as an operator transaction and names what later integrations (session host, board, key keeper) must define before they are enabled (§11, §14).
+- publishes the payload budget and request schemas (§8, §10), updated to the single service transport in revision 0.6;
+- defines operator activation, superseded by the maintenance contract of revision 0.6, and names what later integrations (session host, board, key keeper) must define before they are enabled (§11, §14).
 
 ## 1. Purpose
 
@@ -59,20 +63,18 @@ Without a dispatcher, Curator can still launch directly, without accounting; wit
 | execution | one start of one plan under one allocation (`run/1`) |
 | host launcher | `swarma-user-launcher`, the privileged transition into an agent account (helper repository) |
 | executor | `curator-run` from `curator-agent-launcher`, in its versioned, narrow one-shot exec mode under the agent account: verifies and executes a plan composed by the caller, prepares the working directory, leases its credential and execs the harness; it never composes or resolves profiles in this mode (§5.3). Long-lived sessions use `swarma-session-runner` under the agent account instead (SH2+, §12). |
-| supervisor | the dispatcher-owned process that holds one execution (v0 detached, v1 inside the daemon) |
+| supervisor | the dispatcher-owned process that holds one execution (inside the daemon) |
 
 ## 2. Versions
 
 Figure M-DP1: [process and component boundaries](../diagrams/components.puml).
 
-| Version | Shape | Adds |
+| Slice | Shape | Adds |
 |---|---|---|
-| v0 | the `swarma-dispatcher` binary run under its service account through `sudo -u`, one request per invocation; detached supervisors; an internal periodic sweep; temporary capacity closure refuses | the core: requests, allocations, executions, authority, capacity claims, provisioning, start, stop, cleanup, reconciliation |
-| v1 | the same `swarma-dispatcher` binary in daemon mode on the same core, a Unix socket with peer authentication; temporary capacity closure queues | queue with handles, events, long waits, drain; then the session-host backend and key keeper registration, each behind its activation gate (§14) |
+| initial protected-launch slice (slice 0) | unprivileged `swarma-dispatcher` Unix-socket service on `dispatch/1`, using the broker's connection and framing rules (§8.3); temporary capacity closure refuses | requests, allocations, executions, authority, capacity claims, provisioning, start, stop, cleanup and reconciliation; direct workers and operator-enrolled orchestrators |
+| later capability-gated slices | the same service, core and transport | queue with handles, events, long waits and drain; session-host backend, recursive orchestrator provisioning and key keeper registration each require their publication and qualification gates (§§5.2, 12, 14) |
 
-Quotas and authority failures refuse in both versions; neither is queueable (§3.5, §9).
-
-The installation mode (`command` or `daemon`) is recorded in the dispatcher's configuration and in its state; it changes only through the activation transaction of §11.
+Quotas and authority failures always refuse; neither is queueable (§3.5, §9). Initial admission omits queueing, events, long waits and advanced integrations. Capability negotiation and refusal mappings for unsupported capabilities would need publication (§16). The service completes recovery and publishes readiness before admission. An absent or unready daemon refuses; there is no command fallback. Binary, state-schema and backend-mode changes require the fenced operator maintenance transaction (§11).
 
 ## 3. Identities and authority
 
@@ -82,25 +84,28 @@ The dispatcher runs as the unprivileged service account `swarma-dispatcher`, cre
 
 ### 3.2 Callers
 
-- **v0:** a sudoers rule lets each configured caller run the dispatcher command as `swarma-dispatcher` with no arguments (`<caller> ALL=(swarma-dispatcher) NOPASSWD: /opt/swarma/libexec/swarma-dispatcher ""`). The command refuses unless: it runs as `swarma-dispatcher` (`not_dispatcher_account`); `SUDO_UID` is present and decimal (`not_invoked_by_sudo`); its executable and every parent directory are root-owned and not writable by others; no argument is given; it reads its state root from its configuration, never from an inherited `HOME`; the environment and descriptors are reset; and the request is read within bounded size and time (§10) **before** the state lock is taken.
-- **v1:** the caller is the kernel-reported peer UID on the socket, with the connection rules of broker §4.1.
+- The caller is the kernel-reported peer UID on `dispatch/1`, with the broker's connection rules (§4.1): protected socket directory and endpoint, client verification of the server UID, bounded authenticated connections and descriptor-inheritance/passing restrictions. Caller-to-service sudo authority is absent; dispatcher-to-root helper and launcher authority remains (§11).
 - Principals follow broker §4.2: managed callers by `(uid, generation)` with the helper ledger showing the generation `active` (re-checked for every operation, every queued start and every reconciliation); unmanaged callers pinned by UID and directory identity. An unreadable or invalid ledger refuses; a recycled UID never inherits old allocations or executions.
 
 ### 3.3 Caller keys and request signatures
 
-- The dispatcher's configuration (owned by its account, written by the operator through the installer) maps each **principal** to its **caller keys** (Ed25519). An orchestrator agent's key is registered when the dispatcher provisions it with the `orchestrator` capability (§5.2): the executor generates the key in the agent's home on first start and registers the public key with the dispatcher over an authenticated call from that agent's UID; the dispatcher records it against the allocation's `(uid, generation)`.
-- Every mutating `dispatch-op/1` request carries `auth: { key, sig }`: an Ed25519 signature by a caller key over the domain tag `swarma-dispatcher request/1`, a newline and the CCJ-1 bytes of the request without `auth`. The key must be associated with the authenticated principal (`caller_key_not_associated`), and the leaf of the caller's grant chain must have that key as its subject (`grant_subject_mismatch`).
-- **Wire naming (D-WIRE-NAMES).** Versioned wire identifiers use the repository name: `swarma-<component> <object>/<n>`. The signed request domain above is exactly `swarma-dispatcher request/1`; the request-signature newline does not apply to the effect hash (§4.5). Broker signed domains are `swarma-credential-broker grant/1` and `swarma-credential-broker revocation/1`. Nothing has shipped, so these clean names require no migration or legacy-domain acceptance. This decision supersedes the contract table's W2 retention baseline; it does not publish the helper v2 or launch-ticket signature grammar (§16). The existing dispatcher transport/schema labels `dispatch-op/1` and `dispatch/1` remain distinct from the signed domain.
+- The dispatcher's configuration (owned by its account, written by the operator through the installer) maps each **principal** to its **caller keys** (Ed25519). An orchestrator's caller key is generation-bound. `register_key` records its public key separately from caller-authority activation; the requester signs its delegation only after registration (§5.2). Operator-enrolled orchestrators are supported in the initial slice with generation-bound keys and valid caller chains installed through operator configuration; this does not require the unpublished pre-key exception. Recursive provisioning is refused until its bootstrap is published and qualified.
+- Except for the narrow pre-key `register_key` exception below, every mutating `dispatch-op/1` request carries `auth: { key, sig }`: an Ed25519 signature by a caller key over the domain tag `swarma-dispatcher request/1`, a newline and the CCJ-1 bytes of the request without `auth`. The key must be associated with the authenticated principal (`caller_key_not_associated`), and the leaf of the caller's grant chain must have that key as its subject (`grant_subject_mismatch`).
+- **Wire naming (D-WIRE-NAMES).** Versioned wire identifiers use the repository name: `swarma-<component> <object>/<n>`. The signed request domain above is exactly `swarma-dispatcher request/1`; the request-signature newline does not apply to the effect hash (§4.5). Broker signed domains are `swarma-credential-broker grant/1` and `swarma-credential-broker revocation/1`. Nothing has shipped, so these clean names require no migration or legacy-domain acceptance. This decision supersedes the contract table's W2 retention baseline; it does not publish the helper v2 signature grammar (§16). The existing dispatcher transport/schema labels `dispatch-op/1` and `dispatch/1` remain distinct from the signed domain.
 - A valid chain presented without the matching principal and signature is refused; a copied chain is useless to another caller.
+- **Pre-key registration exception (R-DELEG).** Only the authenticated allocation's own active `(uid, generation)`, already selected for orchestrator enrollment by valid requester/operator authority, may register its first caller key. This exception permits key registration with proof of possession of that key, never `provision`, `start` or spawn authority. It does not use a nonexistent previously registered key. The dispatcher durably binds the enrollment intent, generation, key and registration replay evidence before acknowledgement. An exact replay returns the same registration; a changed key or enrollment intent refuses, a reused UID cannot replay a former generation's registration, and unavailable replay evidence keeps registration closed. The proof-of-possession domain, canonical bytes, freshness window and replay identity are unpublished (§16); the exception is disabled until these are published and qualified.
+- **Rotation.** A new key requires proof of possession and authorization by the currently enrolled key within its current authority, or explicit operator recovery if that key is unavailable. Rotation is journaled and serialized with activation: the old key loses its association, stale registration replays cannot restore it, and a replacement delegation to the new subject must be verified before caller authority is active. Registration never silently rotates a key or transfers authority. The rotation signature/replay format and operator recovery authorization would need publication (§16).
 
 ### 3.4 Grants and their constructible shapes
 
-- **Action vocabulary (frozen for v0):** `agent.spawn` (may ask the dispatcher to provision and start agents within the grant's accounts, harnesses and profiles) and `credential.lease` (may lease those accounts). Unknown actions refuse (`grant_unsupported`).
+- **Action vocabulary:** `agent.spawn` (may ask the dispatcher to provision and start agents within the grant's accounts, harnesses and profiles) and `credential.lease` (may lease those accounts). Unknown actions refuse (`grant_unsupported`).
 - **Caller chain:** the caller's leaf grant names the caller key, allows `agent.spawn` and `credential.lease`, and has remaining depth ≥ 1. It chains to a configured root under the broker's verifier (broker §6.2), at most 4 envelopes.
 - **Dispatcher chain:** the dispatcher's own grant names the dispatcher key, allows `credential.lease`, has depth ≥ 1, and is at most 3 envelopes long, so an agent leaf can be appended within the 4-envelope bound. The installer refuses to configure a dispatcher chain outside this shape.
 - **Agent leaf:** signed by the dispatcher key under its own chain; subject `agent:<generation>`, depth 0, action `credential.lease` only; accounts, harnesses, profiles and window are the intersection of the request, the caller's grant and the dispatcher's grant. A request whose intersection is empty or whose leaf could not be constructed is refused before any account is created (`grant_unconstructible`).
 - **Caller dependency:** the binding carries the caller's chain and the exact intersection (broker §7, revision 0.3). The broker verifies both chains, separately, at bind, lease and every renewal, against the current revocation state: revoking the caller's grant or key stops new leases and renewals for every agent provisioned under it immediately. Tokens already delivered remain valid until they expire or are revoked at the vendor.
-- **Delayed and recovered work** (a queued request, a start after `provision`, a resumed cleanup that would start anything) re-checks the caller principal, signature validity window, caller chain and revocation state before acting.
+- **Orchestrator delegation preflight (R-DELEG).** For requester C to delegate spawn authority to O, C's chain must leave depth for O's `agent.spawn` and `credential.lease` leaf: C's leaf depth ≥ 2, O's depth strictly smaller and ≥ 1, and C's chain plus O's envelope ≤ 4. Each edge uses the parent subject as issuer. The dispatcher chain remains lease-only and never substitutes for C's caller ancestry. Insufficient depth or chain length refuses before account creation.
+- **Revocation verdict (R-VERDICT).** At prepare, dequeue (when enabled) and every start, the configured dispatcher calls broker `broker/1` method `revocation.check` with the exact caller and dispatcher chains being checked and context `prepare`, `dequeue` or `start`. The broker answers `not_revoked`, `revoked` or `unavailable`, together with its revocation sequence at the check. Only `not_revoked` passes this check; `revoked` and `unavailable` refuse before new effects. Fenced broker restore answers `unavailable`. The verdict is point-in-time evidence, never a grant or a future-start permit; no cached verdict substitutes for a new admission check. Exact encoding and refusal-code mappings would need publication (§16).
+- **Delayed and recovered work** (a queued request, a start after `provision`, a resumed cleanup that would start anything) re-checks the caller principal, request signature and validity window, caller chain and a fresh `revocation.check` verdict before acting. The broker's final bind, lease and renewal checks remain mandatory; an earlier verdict cannot prevent later revocation.
 
 ### 3.5 Quotas
 
@@ -142,9 +147,9 @@ Before a request is accepted, its caller principal and root `request_id`, its ca
   binding_id, leaf_grant_id, caller_chain_ids,
   caller_key?:  registered orchestrator key (§3.3),
   state:      "provisioning" | "idle" | "running" | "retiring" | "removed" | "failed",
-  active_execution: run_id | null,          // v0: at most one
+  active_execution: run_id | null,          // at most one
   expires_at?: allocation expiry (absent for standing allocations),
-  cleanup: { home: "archive" | "delete" },
+  cleanup: { home: "delete" },             // ordinary retirement; explicit retention is operator-only
   created_at, updated_at }
 ```
 
@@ -181,7 +186,7 @@ An execution of a standing allocation MUST NOT carry `deadline`, `max_runtime` o
 | `execution_id` | execution claim and launcher/stop receipt identity; its exact construction from `run_id` is not frozen here |
 | account `generation`, broker `binding_id` | never-reused account generation and binding identity; UID or label alone is not authority |
 | broker `launch_id` | correlation only (plan digest or run ID), never authorization |
-| ticket `epoch`, backend `controller_epoch`, `op_id` | ticket claim epoch, host controller fence epoch and backend operation identity; none is an account generation (§12) |
+| claim `epoch`, backend `controller_epoch`, `op_id` | execution claim epoch, host controller fence epoch and backend operation identity; none is an account generation (§12) |
 
 Every downstream call has an **effect id**: the first 32 hex characters of SHA-256 over the domain tag `swarma-dispatcher effect/1` and the CCJ-1 bytes of `{ caller principal, request_id, record id, component, operation, attempt }`. Its inputs are journaled before the call; a retry of the same effect reuses its id; create, bind, launch, stop, unbind and retire use distinct ids. The effect table records, per effect: id, component, operation, intent time, result (`ok` with the returned identity, `refused` with its code, or `unknown`), and the last observation. The root caller correlation is retained alongside the effect's input reference for tracing. Two callers using the same `request_id` never collide downstream. No newline is added between the effect domain and its CCJ-1 bytes.
 
@@ -196,11 +201,26 @@ For one `dispatch` root request `R` by principal `C`, the following are symbolic
 | broker `unbind` | `request_id: E-unbind` | `(C, R)` |
 | helper `user.retire` | `request_id: E-retire` | `(C, R)` |
 
-Each `E-*` uses its record, component, operation and journaled attempt; a retry replays the same intent and ID. The root `R` is never substituted for an `E-*`. Separate `provision` and `start` commands have separate root request IDs; their effects remain correlated to their own originating request and the shared allocation.
+Each `E-*` uses its record, component, operation and journaled attempt; a retry replays the same intent and ID. The root `R` is never substituted for an `E-*`. Separate `provision` and `start` requests have separate root request IDs; their effects remain correlated to their own originating request and the shared allocation.
+
+Receiver-owned read-only `effect.observe` is published by `helper-op/1` and `broker/1`. The dispatcher asks with the original effect's `request_id`, operation and digest of canonical arguments; the lookup never performs a mutation. Only the original receiver caller principal (here, the dispatcher) or an operator may observe; the receiver serializes the read with its journal. It remains usable for reconciliation after the initiating caller/grant expires and grants no fresh mutation authority. Completed mutation replay still returns its recorded result and current target state. Broker unbind uses the matching removal/tombstone observation; retention and exact encoding would need joint publication (§16). Missing or expired evidence is `unavailable`, never absence.
 
 ### 4.6 Observations
 
 Reconciliation and recovery classify every observation of the helper ledger, the broker binding, the claim and the process evidence as **known present**, **known absent**, **unknown** (unreadable, timed out) or **contradictory**. Unknown and contradictory observations never authorise forward execution, a second launch or a successful cleanup; the record stays where it is and the observation is retried.
+
+R-OBS maps the receiver's six states exactly:
+
+| Receiver state | Dispatcher observation class |
+|---|---|
+| `recorded`, with recorded result and current target state | known present or known absent according to the current state |
+| `pending` | unknown |
+| `rolled_back` | known absent for that effect only |
+| `not_recorded`, with complete authoritative evidence it was never recorded | known absent for that effect only |
+| `unavailable`, including missing, expired or unreadable evidence | unknown |
+| `contradictory` | contradictory |
+
+`rolled_back` and `not_recorded` never authorize an automatic new create. Absence for an effect does not establish absence of another effect or of every process. A partial list, refused observation, timeout or unreadable evidence cannot establish absence, release capacity or satisfy cleanup. Process absence and launch/stop receipts remain separately required.
 
 ## 5. Lifecycle
 
@@ -210,8 +230,8 @@ Figure M-DP1: [provision, launch, refusal and recovery sequence](../diagrams/dis
 
 `provision` (or the first half of `dispatch`):
 
-1. **prepare** — schema, principal, signature, chains, quotas, constructibility, plan digest; write `input/1`. Refusal ends here with no effect.
-2. **capacity** — take an owned claim (§9) or refuse (v0) / queue (v1).
+1. **prepare** — schema, principal, signature, chains, delegation depth preflight when applicable, quotas, constructibility, plan digest and fresh `revocation.check` with context `prepare`; write `input/1`. Refusal ends here with no effect.
+2. **capacity** — take an owned claim (§9) or refuse initially; queue only when that capability is enabled, with a fresh `dequeue` check before any effect.
 3. **provision** — helper `user.create { kind: agent, label, request_id: <effect id> }` → generation; (helper v1) `fw.apply`; sign the leaf; broker `bind { uid, generation, lease chain, caller chain, intersection, request_id: <effect id> }`. The allocation becomes `idle`.
 
 On failure an ordinary allocation goes to `retiring`: unbind (if bound) and `user.retire` (if created), each as its own effect, retried until confirmed; the allocation becomes `failed` only after those effects and any applicable identity cleanup (§14) are confirmed.
@@ -220,9 +240,13 @@ For a standing allocation, provisioning failure does not authorise automatic ret
 
 ### 5.2 Orchestrator allocations
 
-The home-generated caller key is distinct from a keeper-retained identity key; broker v0 software roots are a third key class. Keeper adoption requires the versioned broker migration adapter (§14), not relabelling a caller key as a keeper identity.
+The home-generated caller key is distinct from a keeper-retained identity key; broker software roots are a third key class. Keeper adoption requires the versioned broker migration adapter (§14), not relabelling a caller key as a keeper identity.
 
-An allocation with the `orchestrator` capability may itself call the dispatcher as a caller. Its caller chain is a grant the dispatcher issues to the agent's registered key (§3.3), narrowed from the requesting caller's grant, with depth one less. The dispatcher refuses a start of an orchestrator allocation whose key is not yet registered (`caller_key_pending`) except the first start, which registers it.
+**Requester-signed delegation (R-DELEG).** Requester C signs O's caller delegation, narrowed from C's own grant, after O's public key has been registered under O's active generation (§3.3). C is the issuer and O's registered key is the subject; the dispatcher D verifies and records this chain and never signs O's caller delegation. D continues to sign only its separate credential-lease agent leaf (§3.4). Descendants retain C in their ordinary caller chain, so ancestor revocation remains an ordinary verifier/broker dependency check.
+
+Registration is separate from activating caller authority. Before provisioning, preflight remaining depth and the four-envelope bound (§3.4). At activation, recheck C's authenticated principal, request signature, delegation issuer/parent-subject continuity, O's generation/key association, attenuated actions/scope, depth, chain length, validity window and a fresh `revocation.check` with context `prepare`. A missing C signature, unavailable requester or missing/unavailable evidence leaves enrollment pending with no spawn authority. O cannot obtain implicit authority from its UID, registration, capability designation or the dispatcher's signature. Rotation needs a newly valid delegation to the replacement key.
+
+The pre-key registration exception, replay and rotation rules are in §3.3; their wire format and the authority-install transaction remain unpublished (§16). Recursive orchestrator provisioning MUST refuse until this bootstrap is jointly published and qualified. Direct worker launches and operator-enrolled orchestrators form the initial slice. Operator enrollment does not waive registration or valid caller-chain requirements; no first-start bypass grants spawn authority.
 
 An orchestrator composes its children's plans on the caller side, under its own agent account, using its own Curator configuration in its home. The child's `curator-run` only verifies the caller-composed plan before executing it (§5.3); it does not compose or resolve profiles. Which profiles and environments the orchestrator may read and use for its children, and how its narrowed grant constrains them, are unspecified and remain an open question (§16).
 
@@ -230,10 +254,10 @@ An orchestrator composes its children's plans on the caller side, under its own 
 
 `start` (or the second half of `dispatch`), on an `idle` allocation owned by the caller:
 
-1. re-check the caller's authority and, for an ordinary allocation, its lifetime and §3.5 runtime quota; take a capacity claim for one execution. A standing execution has no `max_runtime` quota or runtime deadline; an ordinary execution retains its runtime deadline;
-2. **claim** — under the lock, write an execution claim `{ execution_id, epoch }` and mark the allocation `running`; only one claim per allocation in v0 (`agent_busy`);
-3. **supervisor** — start the supervisor; it registers its own process identity and acknowledges durably before anything else;
-4. **launch** — the supervisor calls the launcher (`launch.start { request_id: <launch effect id>, generation, execution_id, epoch, executor, plan }`); the launcher writes a **start receipt** for that execution (pid, start time, boot id) while still root, before clearing groups, setting GID/UID and exec (helper §7); only the immutable plan is passed on FD3 and no broker connection is inherited; the supervisor records the receipt;
+1. re-check the caller's authority and a fresh `revocation.check` with context `start` before any launch effect and, for an ordinary allocation, its lifetime and §3.5 runtime quota; take a capacity claim for one execution. A standing execution has no `max_runtime` quota or runtime deadline; an ordinary execution retains its runtime deadline;
+2. **claim** — under the lock, write an execution claim `{ execution_id, epoch }` and mark the allocation `running`; only one claim per allocation (`agent_busy`);
+3. **supervisor** — the daemon starts the supervisor; it registers its own process identity and acknowledges durably before anything else;
+4. **launch** — the supervisor calls the launcher (`launch.start { request_id: <launch effect id>, generation, execution_id, epoch, executor, plan }`); the launcher writes a **start receipt** for that execution (pid, start time, boot id) while still root, before clearing groups, setting GID/UID and exec (helper §7); the user manager §7 owns the descriptor lifecycle (R-FD3): scrub untrusted inherited descriptors first, retain the generation lock through the root receipt and completed UID/GID transition, retain the verified executable handle until exec, and release internal handles at last use/close-on-exec and on every failure. The executor receives only 0–2 and read-only FD3 with completely staged, bounded immutable plan bytes; the per-platform staging mechanism remains a publication gate, and any pipe would need qualified capacity/feeder/deadline/cleanup ordering. No broker or root handle is inherited; the supervisor records the receipt;
 5. **running** — `curator-run` in its narrow exec mode verifies the caller-composed plan, prepares its working directory in the agent's home, resolves the protected credential binding, opens its own broker connection, leases its credential and execs the harness. For an ordinary execution, `max_runtime` expiry leads to **stopping**. A standing execution has no runtime deadline and ends only by an explicit stop (`cancel`/stop through `exec.stop`), operator action, its own exit or an incident hard stop; the sweep never stops it for runtime. Exit, explicit stop, operator action or an incident hard stop leads to **stopping**, with absence confirmed in step 6;
 6. **stopping** — the supervisor (or recovery) calls helper `exec.stop { request_id: <stop effect id>, generation, execution_id }`, which terminates the execution's process session and returns a termination receipt only after it has verified that no process of that execution remains;
 7. **finish** — record the outcome; the allocation returns to `idle` (ordinary kept or standing agents) or proceeds to `retiring` (ordinary `dispatch`, an expired ordinary allocation, or operator-signed retirement of a standing allocation).
@@ -246,9 +270,13 @@ A cancel is serialised with the claim: before the launch, it marks the claim `ab
 
 ### 5.4 Retirement and expiry
 
-`retire` of an ordinary allocation, an expired ordinary allocation, or a finished one-shot `dispatch`: unbind, then `user.retire { home }` (helper archive policy), each a confirmed effect. With keeper integration active, the dispatcher then revokes an identity only if its registration recorded it as one-shot (§14), as a separate, confirmed effect after account retirement. Standing identities are left to the operator. The allocation becomes `removed` only after its applicable cleanup effects are confirmed; executions become terminal only after their stop is confirmed and their allocation's cleanup obligations are recorded. The periodic sweep (§7.2) owns ordinary allocation lifetimes while no request is running. Dispatcher retirement requests admit only `archive` and `delete`; `keep` is not dispatcher authority, and the helper's conflicting request/policy wording remains an explicit owner question (§16).
+`retire` of an ordinary allocation, an expired ordinary allocation, or a finished one-shot `dispatch`: unbind, then `user.retire` under the user manager's delete-at-retirement rule (§4.4.1), each a confirmed effect. The user manager quiesces the account, cleans declared keys and deletes its home. There is no archive-by-default policy. Any retained retirement export is limited to service-generated metadata in a closed schema with no agent-controlled strings, names, links or bodies. Code/results follow their separate git/acceptance policy, which does not prove secret-free content.
 
-Standing allocations do not expire and are not retired on execution exit, provisioning failure or loss of caller authority. Only the operator may retire or re-create them, with a signed record. Once such retirement is authorised, the same confirmed cleanup effects apply; reconciliation may retry those authorised effects but cannot initiate retirement on its own. Account retirement never revokes a standing identity (§14). Re-creation is an operator decision, not an automatic recovery from an absent account or binding. The signed-record format remains unpublished (§16).
+Keeping a home is a separate explicit operator retention operation owned by the user manager; it must state plainly that the home's confidentiality is not guaranteed. Dispatcher cleanup has no retention authority and admits `delete` only (§4.3); the retention operation's unpublished format would need publication by the user manager (§16).
+
+With keeper integration active, the dispatcher then revokes an identity only if its registration recorded it as one-shot (§14), as a separate, confirmed effect after account retirement. Standing identities are left to the operator. The allocation becomes `removed` only after its applicable cleanup effects are confirmed; executions become terminal only after their stop is confirmed and their allocation's cleanup obligations are recorded. The daemon's internal sweep (§7.2) owns ordinary allocation lifetimes while no request is running.
+
+Standing allocations do not expire and are not retired on execution exit, provisioning failure or loss of caller authority. Only the operator may retire or re-create them, with a signed record. Once such retirement is authorized, the same confirmed cleanup effects apply; reconciliation may retry those authorized effects but cannot initiate retirement on its own. Account retirement never revokes a standing identity (§14). Re-creation is an operator decision, not an automatic recovery from an absent account or binding. The signed-record format remains unpublished (§16).
 
 ### 5.5 Bring up team (specified-but-unpublished)
 
@@ -270,8 +298,8 @@ From the description, the dispatcher creates or reconciles one standing allocati
 
 ## 6. Holding and stopping
 
-- **Supervisor (v0 and v1).** A per-execution process under `swarma-dispatcher`: new session, no controlling terminal, caller descriptors closed, bounded private logs of the executor's output in the dispatcher state, durable registration before the launch, and the start and termination receipts recorded. In v1 the daemon runs the supervisors itself.
-- **Stop.** Signals are not relayed through sudo (sudo cannot forward SIGKILL and may not stay as a parent). The only stop is the helper's `exec.stop`, authorised for the dispatcher's own generations; ephemeral executions may also end through `user.retire`, which stops the account's processes before removal. The qualification distinguishes: the caller's command killed, its terminal closed, sudo killed, an executor that ignores SIGTERM, and descendants that escaped the session.
+- **Supervisor.** The daemon owns the per-execution supervisor under `swarma-dispatcher`: new session, no controlling terminal, caller descriptors closed, bounded private logs of the executor's output in dispatcher state, durable registration before launch, and start/termination receipts recorded. Daemon loss does not authorize live adoption or a second launch; reconcile the existing effect/receipt and stop as required (§7).
+- **Stop.** The only stop is the helper's `exec.stop`, authorized for the dispatcher's own generations; ordinary ephemeral executions may also end through `user.retire`, which stops the account's processes before removal. Operator maintenance authority is explicit (§§8.1, 11). Qualification distinguishes caller disconnect/death, daemon death, executor ignoring SIGTERM and descendants escaping the session; a client connection is never the execution's lifetime authority.
 
 ## 7. Reconciliation and the sweep
 
@@ -279,45 +307,48 @@ From the description, the dispatcher creates or reconciles one standing allocati
 
 Companion figure: [state-by-state reconciliation](../diagrams/reconcile.puml).
 
-Runs at every v0 invocation before the request is read into state, at v1 daemon start and periodically, and on `reconcile`. For every allocation and execution that is not terminal, it compares the journal and effect table with the observations (§4.6), state by state:
+Runs at daemon start before readiness/admission, periodically inside the daemon, and on `reconcile`. For every allocation and execution that is not terminal, it compares the journal and effect table with the observations (§4.6), state by state:
 
 | State | Observation | Action |
 |---|---|---|
-| provisioning | create effect unknown | query the helper ledger by effect id; never create again until known |
-| provisioning | account present, bind effect unknown | query the broker by effect id; bind if known absent and the request is still valid, else retire only an ordinary allocation; a standing allocation stays pending for an operator-signed decision |
-| idle | binding known absent, ordinary allocation not expired or standing allocation | rebind with fresh authority checks; if authority is gone, retire only an ordinary allocation; no forward execution or automatic retirement/re-creation of a standing allocation |
-| running, claim `claimed` | no supervisor registration | mark the claim `absent`; no launch happens later |
+| provisioning | create effect unknown | call helper `effect.observe` with original effect ID/operation/digest; apply §4.6; no automatic new create |
+| provisioning | account present, bind effect unknown | call broker `effect.observe`; absence is effect-scoped only; resume only the same admitted bind effect with fresh `prepare` authority/verdict checks, never infer authority for a new effect; otherwise retire only an ordinary allocation or keep standing pending |
+| idle | binding known absent, ordinary allocation not expired or standing allocation | reconcile original bind/unbind observations; a new bind requires explicit fresh authority and `prepare` verdict, never automatic creation from effect absence; if authority is gone, retire only an ordinary allocation; standing stays pending |
+| running, claim `claimed` | supervisor registration conclusively absent | mark the claim `absent`; no launch happens later |
 | running, claim `launching` | receipt unknown | keep waiting for the receipt or the launcher's answer; never relaunch |
 | running, `started` | supervisor known absent | `exec.stop`, then record `lost` |
 | stopping | termination receipt missing | repeat `exec.stop` (same effect id) |
 | retiring / cleaning | effects pending | repeat them; terminal only when all are confirmed |
 
+Reconciliation uses `effect.observe` rather than mutation solely to discover state: `recorded` maps by current target state; `rolled_back`/`not_recorded` are known absent for that effect only and never trigger automatic new create; `pending`/`unavailable` remain unknown; `contradictory` stays contradictory. Observe helper create/retire and broker bind/unbind, including retained removal/tombstone evidence. Launch/stop use qualified receipt and process evidence; observations do not waive confirmed process absence. After caller/grant expiry, read-only observation can resolve prior effects without renewing authority. Any forward admission requires fresh §3.4 checks; missing evidence keeps claims held.
+
 Reconciliation of a standing allocation never initiates retirement or re-creation without the operator's signed record, including on a provisioning failure or known-absent account. It may resume already-authorised effects; unknown and contradictory observations remain pending. The absence of allocation expiry does not waive fresh authority checks.
 
 ### 7.2 The sweep
 
-A timer (launchd job or systemd timer as `swarma-dispatcher`) runs the internal service-only CLI entry `swarma-dispatcher sweep` every minute in v0, directly under that service account rather than through the caller sudo entry: reconciliation, lifetimes, claim expiry and log rotation. The internal entry requires the dispatcher service account and recorded command mode. It is outside the closed public `dispatch-op/1` operation table; callers still use the no-argument sudo entry, and their `reconcile` is caller-scoped. A public sweep would need a separate versioned authorization decision. In v1 the daemon does the same internally. The sweep never expires standing allocations: they have neither `expires_at` nor a lifetime quota. It MUST NOT stop their executions for runtime, because they carry no `max_runtime` quota or runtime deadline. Ordinary executions remain subject to §3.5's 4 h default and 12 h maximum; the sweep stops an ordinary execution whose runtime deadline has elapsed through the confirmed `exec.stop` path (§§5.3, 6). It still reconciles standing allocations' authorised effects and executions and maintains claims and logs. While neither sweep nor daemon runs, ordinary allocation lifetimes are not enforced; allocation status states that fact and distinguishes standing allocations, for which expiry does not apply.
+The daemon runs an internal sweep every minute: reconciliation, ordinary allocation lifetimes, claim maintenance and log rotation. There is no external sweep timer or public sweep operation; caller `reconcile` remains scoped by §8.1. The sweep never expires standing allocations: they have neither `expires_at` nor a lifetime quota. It MUST NOT stop their executions for runtime, because they carry no `max_runtime` quota or runtime deadline. Ordinary executions retain §3.5's 4 h default and 12 h maximum; the sweep stops an ordinary execution whose runtime deadline has elapsed through confirmed `exec.stop` (§§5.3, 6). It reconciles standing allocations' authorized effects/executions and maintains claims and logs. While the daemon is absent or unready, new admission refuses; status must report that ordinary lifetimes are unenforced when it can be served, and distinguish standing allocations where expiry does not apply. Recovery completes before readiness and reopening admission.
 
 ## 8. Operations, results and authorisation
 
 ### 8.1 Request `dispatch-op/1`
 
-A discriminated union on `op`; every operation has a closed set of members, and members of other operations are refused (`request_invalid`). Times are RFC 3339 UTC; durations are integers in seconds; lists have bounds.
+A discriminated union on `op`; every operation has a closed set of members, and members of other operations are refused (`request_invalid`). Rows marked as gated or partly unpublished specify semantics only; they cannot be enabled as an incomplete wire schema. Times are RFC 3339 UTC; durations are integers in seconds; lists have bounds.
 
 | `op` | Members | Allowed to |
 |---|---|---|
 | `provision` | `request_id`, `label`, `profile`, `harness`, `accounts`, `capabilities?`, `lifetime`, `cleanup`, `network?`, `parent?`, `grants`, `auth` | callers with `agent.spawn` |
 | `start` | `request_id`, `agent_id`, `plan`, `plan_digest`, `executor`, `max_runtime?` (ordinary only), `board_ref?`, `auth` | the allocation's owner |
 | `dispatch` | the union of `provision` and `start` members except `agent_id`, plus `cleanup.retire = "on-exit"` | callers with `agent.spawn` |
-| `cancel` | `request_id`, `run_id`, `auth` | the execution's owner |
+| `cancel` | `request_id`, `run_id`, `auth` | the execution's owner; operators may stop selected executions only under explicit maintenance authority (§11), whose signed authorization format is unpublished |
 | `retire` | `request_id`, `agent_id`, `auth` | the ordinary allocation's owner; standing retirement is operator-only with a signed record whose format is unpublished (§§5.4, 16) |
 | `status` | `run_id` or `agent_id` | the owner |
-| `wait` | `run_id`, `until_state`, `timeout ≤ 30 s` (v0), `≤ 600 s` (v1) | the owner |
+| `wait` | `run_id`, `until_state`, `timeout ≤ 30 s` initially; `≤ 600 s` only with the later long-wait capability | the owner |
 | `list` | `kind`, `cursor?`, `limit ≤ 200` | own records |
 | `capacity` | — | any configured caller |
 | `reconcile` | `run_id` or `agent_id` | the owner, or operators for any |
-| `drain` (v1) | `mode: "park" \| "reject"` | operators |
-| `register_key` | `public_key` | an orchestrator allocation's own UID (§3.3) |
+| `drain` (later queue capability) | `mode: "park" \| "reject"` | operators |
+| `register_key` | `public_key`; pre-key proof/replay and rotation encoding unpublished (§3.3) | the allocation's own authenticated active generation under the narrow enrollment exception; registration never activates spawn authority |
+| `host_start` (gated §12) | `logical_session_id`, `execution_id`, `controller_epoch`, `op_id`; refers to the host admission permit bound to these values; permit reference/authentication encoding unpublished | only the configured session-host service principal |
 
 For an ordinary allocation, omitted `max_runtime` uses §3.5's 4 h default; a supplied value is subject to the 12 h maximum and configured quotas. For a standing allocation, `max_runtime` MUST be absent; supplying it MUST be refused before launch, never used to install a deadline or silently ignored. The refusal-code mapping is unpublished (§16, question 8); no new code is asserted here. Allocation designation, not the requested duration, determines which policy applies.
 
@@ -325,11 +356,11 @@ For an ordinary allocation, omitted `max_runtime` uses §3.5's 4 h default; a su
 
 `dispatch-result/1`: `{ v: 1, request_id, ok: true, result: { … record … } }` or `{ v: 1, request_id, ok: false, error: { code, message, stage? } }`. A repeat of a completed request returns the stored result with the record's **current** state. The meaning of terminal outcomes is fixed: `exit` (the harness ended), `failed` (a stage failed and cleanup is confirmed), `cancelled`, `expired` (ordinary allocation lifetime or ordinary execution runtime; neither applies to standing allocations or their executions), `lost` (the holder vanished and the execution was stopped and confirmed absent).
 
-### 8.3 v1 socket `dispatch/1`
+### 8.3 Socket `dispatch/1`
 
-Companion figure: [v1 daemon and gated SH2+ backend](../diagrams/v1-daemon.puml).
+Companion figure: [service daemon and gated SH2+ backend](../diagrams/v1-daemon.puml).
 
-The daemon `swarma-dispatcher` runs as `swarma-dispatcher` and listens in `/opt/swarma/run/dispatcher/`. It uses the framing and connection rules of broker §4.1 and §13 with one declared difference: frames up to 128 KiB (§10). Clients use the transport the installation mode names; an authentication, permission, version or malformed-response failure never makes a client fall back to the other transport. After an ambiguous reply the client repeats the same request with the same `request_id` and signature.
+The daemon `swarma-dispatcher` runs as `swarma-dispatcher` and listens in `/opt/swarma/run/dispatcher/`. It uses the framing and connection rules of broker §4.1 and §13 with one declared difference: frames up to 128 KiB (§10). This is the service transport from slice 0, including the Curator CLI client. The broker rules include peer authentication, server-UID verification, protected endpoint/connection lifecycle and descriptor restrictions; descriptors are not a request transport. An absent/unready daemon or authentication, permission, version or malformed-response failure refuses with no command fallback. Recovery completes and readiness is published before admission. Later capabilities reuse this transport; queueing/events/long waits are omitted initially. After an ambiguous reply the client repeats the same request with the same `request_id` and signature.
 
 ### 8.4 Relation to the platform launch contract
 
@@ -339,7 +370,7 @@ The dispatcher implements a **local headless subset** of `dispatch(LaunchRequest
 
 Figure M-DP2: [capacity ownership alongside allocation and execution claims](../diagrams/agent-claim-states.puml).
 
-| Admission condition | v0 | v1 |
+| Admission condition | Initial slice | Later queue capability |
 |---|---|---|
 | temporary capacity gate closed | refuse with `capacity:*` | queue with a durable handle; re-check authority and gates before starting |
 | quota exceeded | refuse `quota_exceeded` | refuse `quota_exceeded`; never queue |
@@ -347,8 +378,9 @@ Figure M-DP2: [capacity ownership alongside allocation and execution claims](../
 
 - **Claims.** A capacity claim is a durable record `{ claim_id, owner record, class, resources, expires_at }`, taken at `capacity`, transferred to the execution at `start`, released after confirmed end/absence, including cancel, expiry and reconciliation; unknown process evidence never releases it. Re-checks before the launch exclude the claim's own resources, so an admitted request never refuses itself.
 - **Counters.** Allocations and executions are counted separately, per caller and in total.
-- **Gates** (architecture §5.1.4): `slots`; `disk` on every volume the run touches (agents root, dispatcher state, broker store); `cpu_idle` over a window; `hold` (the host-wide hold flag, read fail-closed: unreadable means held); `build_lock` and `syspolicyd` for job classes that build or create executables. v0 admits the job classes `agent-headless` and `agent-headless-build`; the second requires the build-lock and syspolicyd gates, which read the host's flags.
-- **Queue (v1).** Temporary gate closures queue a request with a handle; permanent refusals (quota, authority) never queue. The queue is bounded per caller and in total, fair across callers (round-robin by caller), durable, and re-checks authority and every gate at dequeue. `drain` either parks queued requests or rejects them, as the operator chooses.
+- **Authority at admission.** Prepare and every start require a fresh `revocation.check` with the matching `prepare` or `start` context (§3.4); `revoked`/`unavailable` refuse before new effects, including broker restore fencing. Dequeue requires its own `dequeue` check, never a saved prepare verdict. Broker final checks remain independent and mandatory.
+- **Gates** (architecture §5.1.4): `slots`; `disk` on every volume the run touches (agents root, dispatcher state, broker store); `cpu_idle` over a window; `hold` (the host-wide hold flag, read fail-closed: unreadable means held); `build_lock` and `syspolicyd` for job classes that build or create executables. The initial slice admits the job classes `agent-headless` and `agent-headless-build`; the second requires the build-lock and syspolicyd gates, which read the host's flags.
+- **Queue (later capability).** Temporary gate closures queue a request with a handle; permanent refusals (quota, authority) never queue. The queue is bounded per caller and in total, fair across callers (round-robin by caller), durable, and re-checks principal, signature/window, quota, every gate and a fresh `revocation.check` with context `dequeue` at dequeue. `drain` either parks queued requests or rejects them, as the operator chooses.
 
 ## 10. Payload budget
 
@@ -356,27 +388,33 @@ Figure M-DP2: [capacity ownership alongside allocation and execution claims](../
 |---|---|
 | decoded plan | 48 KiB |
 | plan in a request (base64) | 64 KiB |
-| `dispatch-op/1` request (v0 stdin) | 96 KiB, read within 5 s |
 | launcher request `launch-op/1` | 80 KiB (helper §7) |
-| `dispatch/1` frame (v1) | 128 KiB |
+| `dispatch/1` frame (all slices) | 128 KiB |
 
 A request whose plan exceeds the smallest bound on its path is refused at `prepare`, before any account exists (`payload_too_large`). Exact-bound and one-over vectors, counted after base64 and UTF-8 encoding, are part of the qualification.
 
 ## 11. Installation and activation
 
-- **Installation.** The installer creates `swarma-dispatcher` with the helper; places the binary in `/opt/swarma/libexec/`; writes the sudoers rules (callers to `swarma-dispatcher`; `swarma-dispatcher` to the helper and the launcher, each with no arguments); registers `swarma-dispatcher` in the helper policy and the broker configuration; generates the dispatcher key; asks the operator to issue the dispatcher's grant in the constructible shape (§3.4); installs the sweep timer; records the installation mode `command`.
-- **Activation of v1** is an operator transaction: stop admission; take exclusive ownership of the state; check and migrate the state version; let v0 supervisors finish their executions (the first activation drains, it does not adopt live supervisors); reconcile; switch the recorded mode to `daemon` and publish readiness. Every v0 mutation and every v0 supervisor checks the recorded mode and backend generation and stops when they change. Rollback reverses the same steps; a v0 binary refuses state written by a newer version.
+Companion figure: [service activation and bounded maintenance](../diagrams/activation.puml).
+
+- **Installation.** The installer creates `swarma-dispatcher` with the helper, places the binary in `/opt/swarma/libexec/`, writes only dispatcher-to-helper/launcher no-argument sudo rules, registers the service principal in helper policy and broker configuration, generates its key, and obtains the operator-issued constructible dispatcher grant (§3.4). It installs the daemon and protected Unix socket using the broker's service/connection rules. There is no caller-to-dispatcher sudo rule, detached-command bootstrap, external sweep timer or command-to-daemon conversion.
+- **Readiness.** Start with admission closed, take exclusive state ownership, validate state reader/writer compatibility, replay the journal and reconcile effects, receipts and process evidence. Publish readiness and open admission only after recovery is resolved. Unknown or contradictory evidence keeps admission closed; an absent or unready service refuses without fallback.
+- **Bounded maintenance attempt (R-MAINT).** Before a backend-mode change, mutable-state migration or binary swap: (1) close new admission; (2) durably inventory existing executions and selected stops; (3) require explicit operator authority to stop the selected executions through the dispatcher and journaled helper `exec.stop`; (4) require confirmed process absence and reconciliation for all affected executions before changing mode/state/binary. Closing admission or draining queued requests does not stop a running execution. The maintenance deadline bounds this attempt, never a standing execution's lifetime. Unknown/refused stop, uncertain absence, incomplete reconciliation or deadline exhaustion defers maintenance with admission closed; no swap or migration is permitted. Progress and unresolved obligations remain durable for operator review and resumption using the same stop effects/receipts.
+- **Retention and restart.** Maintenance keeps standing allocations and identities; it performs no automatic retirement, re-creation, live adoption or lifetime expiry. Persist intended restarts for operator review; a restart needs fresh authority, fresh `prepare`/`start` verdicts and an admitted plan/transport. Unsupported rows stay visibly stopped. Native resume is only available after its §12 gate; maintenance promises no seamless context continuation.
+- **Cutover and rollback.** After confirmed absence/reconciliation, take exclusive state ownership, validate/migrate the schema and activate the selected binary/backend. Repeat recovery before publishing readiness. Rollback follows the same fenced absence and compatibility order, retains later durable records and never restores an old snapshot as a repair. A binary refuses unreadable or unsupported state; no live supervisor adoption is allowed. Maintenance authorization, deadline/progress and restart-review formats remain unpublished (§16); their wire fields/codes are not invented here.
 
 ## 12. Session-host backend (later; activation gate)
 
-Companion figure: [backend process identities, ticket refusals and recovery](../diagrams/v1-daemon.puml).
+Companion figure: [backend process identities, host admission and recovery](../diagrams/v1-daemon.puml).
 
 Before the SH2+ session-host module may hold executions through its agent-side runner (not the service UID):
 
-- **Launch ticket.** The dispatcher issues a signed ticket `{ generation, execution_id, epoch, executor, plan_digest, expires_at }`; the session host presents it, and the user-manager module's launcher `swarma-user-launcher`, under an explicit host role in the helper policy, redeems it once for the authenticated host under the module's shared lock and journal. The dispatcher only issues the ticket. Redemption requires a valid, unused ticket for a generation the dispatcher owns. Wrong host principal, reuse, other generation, executor or plan, and revoked claims are refused.
-- **Fences and epochs.** The backend API carries `(logical_session_id, execution_id, controller_epoch, op_id)`; the host owns the durable per-session fences (architecture §5.3) and validates the fence and the current epoch atomically with each effect; the dispatcher never infers controller authority from a live pid.
-- **Ownership table.** Admission, records and cleanup stay with the dispatcher; the host service owns durable session metadata, logs, receipts, fences and input admission; `swarma-session-runner` under the agent UID owns the PTY master or per-session app-server transport, stays alive for the execution, and owns credential lease renewal; the handoff of each is specified before activation. `curator-run` remains the first broker consumer; board and host clients request launches through the dispatcher. The runner integration is a later qualified consumer, not an embedded broker client in the host service.
-- **Ticket publication gate.** D-WIRE-NAMES fixes the component naming rule, not the ticket signature domain/version, canonical bytes or host-role schema. These require the joint owner decision in §16; this backend remains disabled until they are published.
+- **Host start (R-START).** Only the configured session-host service principal may invoke `host_start` on `dispatch-op/1`, carrying `(logical_session_id, execution_id, controller_epoch, op_id)` and referring to a **host admission permit**. The permit is a durable dispatcher record bound to those four values, created when a session-host-executor start is admitted. It spans physical start; it is not a signed launch ticket or delegated root authority. The host first persists session intent and a closed delivery fence, then asks the dispatcher for the admitted start. A fence change withdraws the permit or sends it to reconciliation.
+- **Privileged start and cancellation.** Only the dispatcher invokes `swarma-user-launcher` for agent starts, through its existing claim, distinct launch effect and root-receipt path (§§4.5, 5.3). At `host_start`, it rechecks the original admitted caller authority and a fresh `revocation.check` with context `start`; the permit is no substitute for those checks. The host has no launcher sudo authority or helper host role; no ticket signature/schema or redemption journal exists. Cancellation before the call prevents it. After an ambiguous call, resolve the same effect and root receipt and stop the execution if required; never launch twice. Host failure retains the claim and closed delivery fence until reconciliation.
+- **Fences and epochs.** The backend API carries `(logical_session_id, execution_id, controller_epoch, op_id)`; the host owns durable per-session fences (architecture §5.3) and validates the fence/current epoch atomically with each effect. The dispatcher never infers controller authority from a live pid. Controller-only re-adoption of a live runner keeps `execution_id`; actual execution replacement uses a new one and fresh admission. This does not permit live supervisor adoption during dispatcher maintenance (§11).
+- **Registration before delivery.** The approved agent-side runner opens a fresh authenticated channel to the host after the dispatcher starts it. Registration in the current controller epoch and readiness precede delivery; a closed fence or stale epoch prevents delivery. The fresh runner still checks the exclusive native-session lock (R-HOLD-OLD/R2).
+- **Ownership table.** Admission, privileged starts, records, stop and cleanup stay with the dispatcher; the host service owns durable session metadata, logs, receipts, fences and input admission; `swarma-session-runner` under the agent UID owns the PTY master or per-session app-server transport, stays alive for the execution and owns credential lease renewal. Account generation, execution claim epoch and host controller epoch remain distinct. Each handoff is specified before activation. `curator-run` remains the initial first broker consumer; board/host clients request launches through the dispatcher. Runner integration is a later qualified consumer, not an embedded broker client in the host service.
+- **Permit publication gate (I4).** Tickets are removed. The host admission permit reference/encoding, `host_start` authentication, admission durability, fence withdrawal, claim/cancel/crash ordering, root/host receipts, recovery and ownership handoffs would need joint publication and qualification (§16). The backend remains disabled until then; naming these semantics does not publish wire members beyond R-START.
 - **Native resume (D-RESUME; later backend only).** On the same machine, a non-breaking harness version change is allowed by semver: same major, and for 0.x the same minor, without an extra qualification row. A different major or 0.x minor refuses. Retain the same runtime family, managed home, profile pin, transcript integrity, exclusive native-session lock, ready authentication and current grants. A harness resume failure is reported as `resume-failed` for the caller to decide; no automatic fallback or portable seed is part of resume. A per-harness note records vendors known not to follow semver. This does not enable resume in the current local headless subset (§8.4).
 
 ## 13. Security
@@ -391,7 +429,7 @@ Before the SH2+ session-host module may hold executions through its agent-side r
 
 | Integration | Must be defined before it is enabled |
 |---|---|
-| session host (§12) | launch tickets, fences and epochs, the ownership table |
+| session host (§12) | `host_start`, host admission permit, fences and epochs, cancellation/recovery ordering, registration/readiness before delivery and the ownership table |
 | board spawn path | a board-owned adapter that keeps the board's run ids, attempt lineage and recovery successors; distinct dispatcher execution handles; a second completion barrier (an execution's exit never satisfies the board's `wait`); durable, replayable exit delivery |
 | key keeper | registration tuples `(uid, generation, identity path, owner, registration generation)` plus the one-shot flag recorded at registration, with active-ledger checks and detachment before UID reuse; the broker's versioned key-migration procedure |
 | one-shot executor | R-LR1 versioned narrow `curator-run` intake and Decision 0021 amendment, plus broker credential-injection qualification (§5.3) |
@@ -400,7 +438,7 @@ Before the SH2+ session-host module may hold executions through its agent-side r
 
 ## 15. Qualification
 
-On hosted CI runners only, through the deployed clients (`curator agent-user` and `curator-dispatch`) and exactly the deployed sudoers rules:
+On hosted CI runners only, through the deployed clients (`curator agent-user` and `curator-dispatch`), the slice-0 `dispatch/1` socket and exactly the deployed dispatcher-to-helper/launcher sudoers rules. These are qualification requirements, not locally executed evidence:
 
 - `dispatch`, and `provision` then `start` twice in sequence, with the broker's slice 0 and one Claude launch each;
 - authority: a copied chain from another caller, a missing or wrong signature, an unregistered key, an unconstructible request, a revoked caller grant (the agent's next lease refused), a recycled UID;
@@ -414,24 +452,37 @@ On hosted CI runners only, through the deployed clients (`curator agent-user` an
 - team bring-up after wire publication: repeat and crash recovery per role reuse recorded effect IDs without duplicate allocations; unknown/contradictory observations remain pending; provisioning failure and authority loss do not automatically retire standing allocations;
 - capacity: quota 1 admits its own request and refuses a competitor; each gate; hold read failure;
 - payload bounds at, and one over, each limit;
-- v1: peer authentication, server identity, no transport fallback, queue fairness and drain, the activation transaction and its rollback.
+- service from slice 0: peer authentication, server UID verification, protected endpoint, no inherited/passed service descriptors, absent/unready daemon refuses, recovery before readiness and no command fallback; later capabilities: queue fairness, dequeue verdict, events/wait gates and drain;
+- maintenance: authorized selected stop of a standing execution within the bounded attempt, retained allocation/identity and fresh authority for restart; unauthorized stop, unknown/refused stop, escaped/live process, deadline exhaustion and incomplete reconciliation defer mode/state/binary change; rollback retains later records and verifies compatibility, never adopts a live supervisor;
+- delegation bootstrap (before recursive activation): C != D with a valid C-to-O chain, dispatcher-signed/wrong issuer refusal, insufficient depth/overlong chain refused before create, pre-key replay/mismatched key or intent/old generation refused, rotation replay cannot restore the old key, missing C signature leaves O without spawn authority; revoke C before O activates and after O creates W, and refuse O/W new admission and subsequent lease/renewal under the retained ancestry; delivered tokens retain broker lifetime limits;
+- revocation verdict: revoked before prepare/dequeue/start, unavailable broker, stale prior verdict and fenced restore all refuse before new effects; final bind/lease/renewal still check independently after a prior `not_revoked`;
+- effect observation: all six states and exact §4.6 mapping; crashes before intent, during effect, after durable result/before acknowledgement, rolled-back create, complete not-recorded evidence, missing/expired/unreadable evidence, contradictory results and reconciliation after caller/grant expiry; effect absence never creates automatically or releases capacity without process absence; bind/unbind removal/tombstone retention and unauthorized/digest-mismatched lookup;
+- host backend before activation: only configured host principal can use `host_start`; mismatching permit values, stale epoch, fence change/cancellation before call, host failure, ambiguous root call, receipt recovery and required stop never produce a second launch; fresh runner channel, current-epoch registration and readiness precede delivery;
+- retirement: confirmed quiesce/declared-key cleanup and home deletion, closed-schema service metadata only, no automatic retention; explicit operator retention states confidentiality is not guaranteed; no standing identity revocation;
+- R-FD3 launcher qualification is owned by the user manager: maximum admitted plan staging, launch/stop/retire interlocks, staging/drop/exec failures and absence of internal handles in the executor must be qualified before dispatcher activation.
 
 ## 16. Open questions
 
-1. **Retirement enum (contract P7; OWNER DECISION NEEDED, user-manager owner):** admit `keep` as an operator-only request value and align the helper schema, or remove it from policy and retain only `archive` / `delete`. Neither option extends dispatcher authority; this spec admits only archive/delete for dispatcher cleanup (§5.4).
-2. **Helper v2 signed requests (contract W3; OWNER DECISION NEEDED, user-manager/contract owners):** publish a component-specific format or a versioned shared adapter. D-WIRE-NAMES supplies the naming rule but not the signature domain/version and canonical bytes. v0/v1 use authenticated sudo caller and role policy, not an invented signed-grant verifier.
-3. **Launch tickets (contract I4; OWNER DECISION NEEDED, dispatcher/user-manager/session-host owners):** jointly version and publish the signature domain, canonical bytes and host-role schema, then activate the gate, or leave the SH2 backend disabled (§12). No concrete ticket-signature grammar is claimed here.
+1. **Retirement policy (F-1; CLOSED — owner-decided 2026-10-12):** ordinary retirement deletes the home after quiesce and declared-key cleanup. Dispatcher cleanup admits only `delete`; retention is a separate explicit operator operation with no confidentiality guarantee (§5.4). The user manager would need to publish its retention operation and closed-schema service-metadata export; no general secret classifier or archive-by-default alternative remains.
+2. **Helper v2 signed requests (contract W3; OWNER DECISION NEEDED, user-manager/contract owners):** publish a component-specific format or a versioned shared adapter. D-WIRE-NAMES supplies the naming rule but not the signature domain/version and canonical bytes. The helper's initial contracts use authenticated dispatcher sudo caller and role policy, not an invented signed-grant verifier.
+3. **Host admission permit (contract I4 / R-START):** launch tickets and the old launcher-redemption resolution are removed by the owner decision of 2026-10-12. Joint publication would need the durable permit encoding/reference bound to `(logical_session_id, execution_id, controller_epoch, op_id)`, configured-host authentication, signature/canonical bytes where required, admission and fence-withdrawal durability, claim/cancel/crash ordering, root/host receipt observation, registration/readiness, recovery and ownership handoffs. Exact refusal mappings would need publication; no new code is invented. The SH2+ backend stays disabled (§12).
 4. **Agent self-goals (contract G2; deferred SH2+ owner decision):** (a) a separate agent namespace with its own bounds, or (b) retain caller/board-only authorship. Neither requires goals or a board for host operation (§8.4).
 5. **Log-storage handoff:** retain dispatcher execution logs or transfer them to the host's durable log store when the backend activates; the ownership handoff must be specified first (§12).
 6. **Standing-session execution runtime (R3; CLOSED — owner-decided 2026-10-12):** the owner decided that the orchestrator and standing team members (other orchestrators and standing agents) have no predefined allocation expiry or maximum execution runtime; only an explicit stop or the operator stops them. This supersedes the R3 proposal and applies to executions of standing allocations in all backends, not only SH2+. They have no `max_runtime` quota or runtime deadline, and the sweep never stops them for runtime (§§3.5, 4.4, 5.3, 7.2). Own exit and incident hard stop still end an execution through confirmed absence. The 4 h default and 12 h maximum apply to every other execution.
 7. **Orchestrator child-plan access:** which profiles and environments may an orchestrator read and use for its children from its agent account, and how does its narrowed grant constrain that access? Caller-side composition with the orchestrator's own home configuration is decided (§5.2); the read/access policy is unspecified.
 8. **Standing/team wire publication:** publish the standing designation in `agent/1`, the operator-signed retirement/re-creation record, and the remaining envelope, signature grammar, transport, role matching and change semantics for the specified-but-unpublished `swarma-dispatcher team/1` (§§4.3, 5.4–5.5). Only per-role `label`, `profile`, `harness`, `accounts` and `capabilities` are specified here; no additional fields or values are asserted. Publish the refusal-code mapping for `start` with `max_runtime` on a standing allocation (§8.1); if an existing code cannot represent this refusal, it would need a published refusal code. No code is invented here; the runtime policy itself is decided in question 6.
 
+9. **Orchestrator bootstrap (R-DELEG):** would need the generation-bound enrollment intent, pre-key proof-of-possession domain/canonical bytes, authenticated freshness/replay window and identity, rotation/operator-recovery authorization, requester-signed delegation installation operation and durable activation/acknowledgement ordering (§§3.3–3.4, 5.2, 8.1). Depth/chain preflight and requester ancestry are fixed; wire members and refusal mappings remain unpublished. Recursive provisioning stays refused until publication and qualification.
+10. **Revocation verdict (R-VERDICT):** would need exact `broker/1 revocation.check` chain/context and sequence encoding, configured-dispatcher authentication, bounded response/freshness handling and dispatcher refusal-code mapping for `revoked`/`unavailable`, including restore fencing. Contexts and verdict names are fixed (§3.4); final broker checks stay mandatory.
+11. **Receiver observations (R-OBS):** would need exact `effect.observe` encoding, canonical argument digest format, original-caller/operator authentication and journal serialization, helper and broker retention floors, matching unbind removal/tombstone retention and lost-evidence behavior. Six states and their mapping are fixed (§§4.5–4.6, 7); expired/unavailable evidence never proves absence.
+12. **Maintenance authorization (R-MAINT):** would need operator-signed selected-stop authorization, bounded attempt deadline/progress persistence and restart-review formats, interruption/resumption ordering and reader/writer compatibility qualification (§§8.1, 11). No maintenance deadline limits standing runtime.
+13. **Service capability publication / R-FD3:** later queue/events/long-wait negotiation and unsupported-capability refusal mappings would need publication on the same `dispatch/1` transport. User manager §7 would need the per-platform fully staged, bounded immutable read-only FD3 mechanism (or qualified pipe capacity/feeder/deadline/cleanup ordering) and lifecycle qualification before launch activation; this dispatcher references that single contract (§5.3).
+
 The executor and first consumer are decided by D-EXECUTOR, managed PATH by D-PATH, wire names by D-WIRE-NAMES, and resume compatibility by D-RESUME; their older open questions are superseded. Default quotas and ordinary allocation lifetimes are already decided and configurable (§3.5); the owner decision of 2026-10-12 closes R3: standing allocations have no expiry/lifetime quota and their executions have no runtime quota/deadline. Every other execution retains the 4 h default and 12 h maximum. Interactive execution remains gated on the session host. Donor provisioning belongs to a separately specified small privileged component, not a user-manager extension (D-DONOR-PROVISIONING); variant B stays disabled until that component is specified, and remote targets remain outside this subset.
 
 ## Appendix A. Refusal codes
 
-`not_dispatcher_account`, `not_invoked_by_sudo`, `caller_not_permitted`, `caller_key_not_associated`, `caller_key_pending`, `signature_invalid`, `request_invalid`, `request_too_large`, `request_timeout`, `request_id_conflict`, `payload_too_large`, `plan_digest_mismatch`, `grant_invalid`, `grant_unsupported`, `grant_subject_mismatch`, `grant_not_delegable`, `grant_unconstructible`, `quota_exceeded`, `capacity:slots`, `capacity:disk`, `capacity:cpu_idle`, `capacity:hold`, `capacity:build_lock`, `capacity:syspolicyd`, `expired_in_queue`, `agent_busy`, `agent_not_found`, `agent_not_owned`, `agent_retired`, `run_not_found`, `run_not_owned`, `run_terminal`, `unsupported_combination`, `observation_unknown`, `mode_mismatch`, `state_version_unsupported`.
+`caller_not_permitted`, `caller_key_not_associated`, `caller_key_pending`, `signature_invalid`, `request_invalid`, `request_too_large`, `request_timeout`, `request_id_conflict`, `payload_too_large`, `plan_digest_mismatch`, `grant_invalid`, `grant_unsupported`, `grant_subject_mismatch`, `grant_not_delegable`, `grant_unconstructible`, `quota_exceeded`, `capacity:slots`, `capacity:disk`, `capacity:cpu_idle`, `capacity:hold`, `capacity:build_lock`, `capacity:syspolicyd`, `expired_in_queue`, `agent_busy`, `agent_not_found`, `agent_not_owned`, `agent_retired`, `run_not_found`, `run_not_owned`, `run_terminal`, `unsupported_combination`, `observation_unknown`, `state_version_unsupported`.
 
 ## Appendix B. Diagrams
 
@@ -443,4 +494,4 @@ PlantUML sources are design views of this spec, not implementation or qualificat
 | M-DP2 | [Run states](../diagrams/run-states.puml), [agent and claim states](../diagrams/agent-claim-states.puml) | §§4.3–4.6, 5–7, 9 |
 | M-DP3 | [Storage layout](../diagrams/storage-layout.puml) | §§4.1–4.5, 6, 8.3, 11 |
 
-Companion views: [bring up team](../diagrams/bring-up-team.puml) (§5.5), [reconciliation](../diagrams/reconcile.puml) (§7.1) and [v1 daemon / gated SH2+ backend](../diagrams/v1-daemon.puml) (§§8.3, 12). Unspecified details are marked in the figures; their notes do not introduce contract behavior.
+Companion views: [bring up team](../diagrams/bring-up-team.puml) (§5.5), [reconciliation](../diagrams/reconcile.puml) (§7.1), [service daemon / gated SH2+ backend](../diagrams/v1-daemon.puml) (§§8.3, 12) and [activation / maintenance](../diagrams/activation.puml) (§11). Unspecified details are marked in the figures; their notes do not introduce contract behavior.

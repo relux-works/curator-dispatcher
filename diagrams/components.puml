@@ -1,13 +1,12 @@
 @startuml components
 skinparam componentStyle rectangle
-title M-DP1: dispatcher v0 command / v1 daemon (draft; not implemented)
+title M-DP1: dispatcher service from slice 0 (draft; not implemented)
 actor "Caller process\n(person, orchestrator or optional board adapter)\ncaller UID; principal + registered key" as C
 rectangle "Service UID: swarma-dispatcher" {
-  component "v0 no-argument sudo command\none request per invocation" as CMD
-  component "v1 daemon\npeer-authenticated socket" as DMN
+  component "Service daemon from slice 0\npeer-authenticated dispatch/1 socket" as DMN
   component "Shared core\nauthority, admission, effects, reconciliation" as CORE
-  component "Execution supervisor\nv0 detached; v1 in daemon\nservice UID" as SUP
-  component "v0 internal sweep\nservice-only timer, every minute\nv1 daemon sweeps internally" as SW
+  component "Execution supervisor\ndaemon-owned\nservice UID" as SUP
+  component "Internal daemon sweep\nevery minute" as SW
   database "Dispatcher-owned persistent state\ninput/1, agent/1, run/1, keys, claims,\neffect table, journal, index, bounded logs" as DS
 }
 component "swarma-user-manager\nprivileged helper (root)\nowns account ledger / termination evidence" as H
@@ -17,28 +16,32 @@ component "curator-run narrow exec mode\nagent UID; first broker consumer\nthen 
 component "swarma-session-host service\nSH2+ gated; own service UID\nowns session metadata, logs, receipts, fences" as SH
 component "swarma-session-runner\nSH2+ gated; agent UID\nowns PTY/app-server and lease renewal" as SR
 component "Key keeper\nlater gated integration\nowns registered identity / revocation state" as K
-C --> CMD : signed dispatch-op/1 (v0)
-C --> DMN : signed requests on dispatch/1 (v1)
-CMD --> CORE
+C --> DMN : signed requests on dispatch/1 (all slices)
 DMN --> CORE
 SW --> CORE
 CORE --> DS : lock; journal before effects\natomic records; replay on startup
-CORE --> H : user.create / user.retire / exec.stop\ndistinct durable effect IDs; own generations
-CORE --> B : bind / unbind; attenuated leaf\nrequest intersect caller intersect dispatcher\ncaller chain retained as dependency
+CORE --> H : effect.observe; user.create / user.retire / exec.stop\ndistinct durable effect IDs; own generations
+CORE --> B : revocation.check at prepare/dequeue/start\neffect.observe; bind / unbind; attenuated leaf\nrequest intersect caller intersect dispatcher\ncaller chain retained as dependency
 CORE --> SUP : execution claim; durable registration
 SUP --> L : launch.start; distinct E-launch
-L --> E : receipt while root; reset; drop GID/UID\nimmutable plan FD3; no broker FD
+L --> E : root receipt; drop GID/UID; shared lifecycle R-FD3\nread-only staged plan FD3; only 0-2 + FD3 to executor
 E --> B : own connection; lease\ncaller dependency rechecked
-CORE ..> SH : later backend; ticket + fenced operation IDs
-SH ..> L : present ticket; launcher redeems once for authenticated host\nuser-manager shared lock + journal (§12)
-SH ..> SR : session input admission / metadata
+SH ..> CORE : host_start; four bound values; refers to bound host admission permit (§12)
+CORE ..> SH : durable admission / receipts; fence withdrawal or reconciliation
+SH ..> SR : delivery only after current-epoch registration/readiness
+SR ..> SH : fresh authenticated channel
+L ..> SR : dispatcher-owned admitted start; R-FD3 lifecycle
 SR ..> B : later qualified consumer; own connection
 CORE ..> K : one-shot registration / separate revocation\nonly after confirmed retirement
 note bottom of CORE
   Refusal: principal/key/signature/chain/quota failures never queue.
-  Capacity: v0 refuses; v1 queues and rechecks at dequeue.
+  Capacity: initial refusal; later capability queues and rechecks at dequeue.
+  Broker revocation.check: revoked/unavailable refuses; final broker checks stay mandatory.
+  Recovery then readiness before admission; absent/unready daemon refuses without fallback.
+  Recursive orchestrator provisioning refused until requester-signed bootstrap is qualified.
   Unknown/contradictory observations keep records pending:
   never relaunch, release capacity or declare cleanup successful.
+  Retirement: quiesce, declared-key cleanup, home deletion; explicit operator retention only.
   Ordinary provision failure: unbind if bound, retire if created; confirm cleanup.
   Standing: no expiry/lifetime quota; sweep never expires it.
   Standing executions: no max_runtime quota or deadline; sweep never stops them for runtime.
@@ -48,9 +51,11 @@ note bottom of CORE
   Root caller request ID is correlation, not a shared receiver key.
 end note
 note right of SH
-  SH2+ disabled until ticket grammar, host role and ownership handoff
-  are published. Stop stays dispatcher -> helper exec.stop.
-  SH1 behavior is unspecified in spec §12.
+  SH2+ disabled until host_start/permit authentication, crash ordering,
+  receipts, fences and ownership handoff are published/qualified.
+  Dispatcher alone invokes the root launcher; host has no root start authority.
+  Runner opens a fresh host channel; current-epoch registration/readiness before delivery.
+  Stop stays dispatcher -> helper exec.stop.
   Log handoff is unspecified in spec §16 (open question 5).
 end note
 note right of E
