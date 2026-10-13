@@ -1,6 +1,7 @@
 @startuml v1-daemon
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 ' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
+' Revision: accepted architecture-review findings (2026-10-13); class/placement predicates and scoped handoffs.
 title Companion to M-DP1: service from slice 0; later capabilities and gated SH2+ backend
 participant "Caller process\ncaller UID / principal + key" as C
 participant "Read-only account\nswarma-observer" as R
@@ -152,7 +153,11 @@ alt SH2+ permit / ownership / crash-order gates published and qualified (§§12,
     Retired one-shot orchestrator owner -> no restart; same session/op never duplicates successor.
     User-manager §7 R-FATE table defines survival/maintenance affected sets; no implicit adoption.
     Fresh runner checks exclusive native-session lock; native resume retains §12 rules.
-    Log handoff remains unpublished (§16, question 5).
+    Host owns producer/aggregate output, queued-input and evidence accounting (§6).
+    Reserve/charge before durable acceptance; retain debt through replacement/retirement.
+    Bound buffers and refusal; preserve hard control/journal reserve and supervisor output bound.
+    Reject admission without reserve; budget-boundary park/stop uses existing journaled path.
+    Retention/custody/budgets and qualification remain open (§16, question 5).
   end note
 else default supervisor backend
   D -> B : fresh revocation.check exact chains, context start
@@ -193,7 +198,8 @@ note over D
   R-EXEC/R-VERIFY: OS exec allowlist + machine-selected immutable body pin.
   Full invocation/interpreted inputs qualified; worker-code execution/builds/tests off-host.
   R-CEILINGS: class minimums met by published host matrix; no OS-name ban.
-  R-STANDING: host-local loop trusted only; digest-check surfaces on launch/restart/resume.
+  R-STANDING: trusted class AND local agent placement for host loops; circle membership supplies neither.
+  Remote placements stay workplaces with donor loops; digest-check surfaces on launch/restart/resume.
   R-TRANSFER: distinct materialize/work/export physical execution evidence; bounded original cleanup consent.
   Ordinary expiry collection never uses R-SESSION or bypasses security holds; no start after helper retiring.
   Every blob/result durable outside deletion before discharge; authenticated retained-content release.

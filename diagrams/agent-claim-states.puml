@@ -1,6 +1,7 @@
 @startuml agent-claim-states
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 ' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
+' Revision: accepted architecture-review findings (2026-10-13); class/placement predicates and scoped handoffs.
 title M-DP2: allocation, execution claim and capacity ownership, service slices (draft)
 state "agent/1 (dispatcher-owned record; helper owns OS account ledger)" as Agent {
   state "provisioning" as Provisioning
@@ -95,7 +96,8 @@ end note
 note bottom of Capacity
   R-CEILINGS: qualified host matrix meets class minimums; no OS-name exclusion.
   Slice 0/helper v0 refuse untrusted; R-EXEC profile required; builds/tests off-host (R-VERIFY).
-  R-STANDING: trusted host loop only; untrusted standing placement is workplace.
+  R-STANDING: host loops need trusted class AND local agent placement; membership is insufficient.
+  Remote standing placements stay workplaces with donor-side loops, including circle members.
   R-NET-TOOL/R-RANGE-DENY: zero-egress workplace, provider-only trusted proxy; range rule from v0.
   Web default-off; explicit per-identity trusted-circle opt-in only; host boundaries stay.
   No direct/external-http-proxy binding for any platform-host account.

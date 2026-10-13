@@ -2,6 +2,7 @@
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 skinparam componentStyle rectangle
 ' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
+' Revision: accepted architecture-review findings (2026-10-13); host output accounting handoff.
 title M-DP3: dispatcher storage ownership and durable ordering, service slices (draft)
 component "swarma-dispatcher process\nservice daemon from slice 0\nservice UID swarma-dispatcher" as D
 component "Supervisor\ndaemon-owned\nsame service UID" as S
@@ -94,8 +95,13 @@ end note
 note bottom of E
   §5.3 one-shot intake/qualification gate remains closed until published.
   SH2+ target (§12): host service owns metadata/logs/receipts/fences;
-  agent runner owns PTY/app-server and renewal. State/log handoff details
-  are unspecified in spec §§12, 16; no alternate storage path is asserted.
+  agent runner owns PTY/app-server and renewal. Host output accounting (§§6, 9, 12-13):
+  producer and aggregate budgets for output, queued input and required evidence;
+  charge/reserve before durable acceptance; retained debt survives replacement/retirement.
+  Bounded buffers/refusal or journaled park/stop; output cannot spend hard control/journal reserve.
+  Admission refuses without reserve; safe retention never truncates required replay evidence.
+  Preserve supervisor output-size bound; incomplete evidence stays closed/unknown.
+  State/log custody, budget values and retention formats remain open (§16 question 5).
 end note
 legend
   Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#41-state-directory §4.1 state directory]]

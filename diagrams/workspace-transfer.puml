@@ -1,6 +1,7 @@
 @startuml workspace-transfer
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 ' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
+' Revision: accepted architecture-review findings (2026-10-13); inert review and cumulative obligations; lifetime/performer open.
 title R-TRANSFER: dispatcher workspace contract and board exact-candidate path (draft)
 participant "Original caller principal" as C
 participant "Dispatcher\nno repository; journals digests" as D
@@ -12,7 +13,7 @@ participant "User manager\naccount-wide stop scope" as H
 participant "Project-side executor\nservice principal; workplace fence" as F
 participant "swarma-workspace-export\napproved executor; child UID; no network" as X
 participant "Board change-request machinery\norchestrator executes; formats unpublished" as B
-participant "Trusted reviewer\nnot producer; not untrusted" as R
+participant "Admitted review role\ntrusted-class local agent or person holding role\nnot producer; not untrusted" as R
 == materialize base B ==
 C -> D : admitted base B as bounded canonical tree archive with start
 D -> J : archive digest; plan covers immutable B/mode-aware manifest, scope, exec/resources\nexporter digest/caps/repair budget/bounded cleanup consent
@@ -31,6 +32,7 @@ end
 note over D,W
   R-UNTRUSTED: workplace untrusted unless operator act admits remote worker to trusted circle.
   Membership enables donor-side opt-ins only; all host boundaries stay.
+  Membership supplies neither review-role nor host-local placement authority (§3.6).
   Every workplace: no subscription binding or host-local loop.
   R-NET-TOOL/R-EXEC: workplace zero egress; protected machine-selected exec body pin.
   Full invocation and interpreted inputs qualified; caller reference is not authority.
@@ -45,6 +47,10 @@ note over D,W
   No harness/lease/network/repair consent; no exporter after helper retiring or session-permit reuse.
   Accounted bounded cleanup capacity progresses beside forward work; no security/storage exemption.
   Archive/plan/resource/transport/retention formats and cap values unpublished.
+  Open requirement (question 31): stage A bridge/helper/dispatcher package must jointly
+  reconcile ingress/relay/start/quiesce/export/reconnect and generation-bound creation fence.
+  Includes auxiliary UID processes, replacement, watcher/emergency stop and explicit reopening.
+  No mechanism/channel lifetime chosen here; existing gates do not claim a qualified lifetime.
   Result schema is DRAFT: schemas/workspace-result-1.schema.json (§5.2.1).
 end note
 W -> W : edit in admitted write scope; platform ignores worker .git/commits/history
@@ -122,17 +128,39 @@ B -> B : sign candidate C with repository identity; worker/run/result-digest tra
 B -> B : verify C tree equals recomputed B plus change set
 B -> D : authenticated import acknowledgement (format unpublished)
 D -> S : release retained content only on authenticated acknowledgement or other explicit authorized release
-B -> R : review exactly C; execution only in R-VERIFY
-R --> B : verdict bound to C (K1); flagged paths acknowledged hunk by hunk
+B -> B : recompute full candidate delta/sensitive-hunk set against trusted integration baseline\nnot rework base B or verification H; include inherited sensitive changes/symlinks\nsurface unresolved inherited provenance separately from current-run capability class
+B -> R : exact-C inert diffs/blobs; read-only by digest outside discovery roots\npositive role/class/placement admission; execution only in R-VERIFY
+note over B,R
+  Candidate files are data, never automatically adopted as control surfaces.
+  Covers startup/reload/nested discovery/resume/child entry before or after acknowledgement.
+  Discovery-capable tree entry requires qualified strict-context adapter; root surfaces alone insufficient.
+  Acknowledgement records no preceding automatic load; inert path satisfies ordering by construction.
+  Verdict does not admit instructions/hooks/MCP/permissions/skills; separate control-context decision.
+  Semantic prompt injection remains a review risk; optional reviewer policies off/unchosen.
+end note
+R --> B : fresh verdict bound to exact C (K1), integration baseline and complete flagged set\nexplicit hunk acknowledgements; inherited provenance resolution is exact-candidate bound
 alt changes requested
   B -> C : findings; next admitted base C
   C -> D : next round archive from C; remote signed letter or local task snapshot
   D -> M : verify/materialize fresh workspace from immutable C manifest\nold home removal only after complete-content custody or per-act waiver
   M -> W : rework on C; donor-side session continues for remote worker
   W -> W : next fenced round/export produces C2 on C; repeat exact-candidate review
+  note over B,R
+    Recompute against same trusted integration baseline; retain inherited sensitive/provenance obligations.
+    Fresh exact-C2 acknowledgements/verdict; no carry-over; fully reverted sensitive changes drop out.
+    Baseline refresh requires re-review; rewording alone cannot clear provenance.
+    Clearance needs published conservative removal/provenance rule or exact-candidate resolution.
+    Current-run capability class stays factual; acknowledgement does not complete provenance.
+  end note
 else exact C accepted
   B -> B : signed fast-forward of accepted exact head (K1/K3)
   note right of B : Moved base requires ordinary refresh and re-review.
+  note over C,B
+    Open requirement (question 32): stage T board/infrastructure package must name non-agent
+    external-effect performer, request/result paths, custody/routes and per-effect validation.
+    Covers pending publication, verification handoff, base refresh and exact-head landing.
+    Topology remains owner/infrastructure choice; no agent credential/egress or new service selected.
+  end note
 end
 note over D,J
   Four classes: recorded export, deterministic refusal, interrupted/unknown, per-act authorized discard.

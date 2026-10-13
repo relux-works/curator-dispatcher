@@ -1,6 +1,7 @@
 @startuml dispatch-lifecycle
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 ' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
+' Revision: accepted architecture-review findings (2026-10-13); class/placement predicates and scoped handoffs.
 title M-DP1: trusted-agent ordinary allocation and one-shot lifecycle (draft; §5.3 intake gate)
 participant "Caller process\ncaller UID / principal + key" as C
 participant "Dispatcher core\nservice UID swarma-dispatcher" as D
@@ -215,7 +216,8 @@ note over D,J
   served_policy_digest/service_generation evidence; formats owned by N15.
   R-EXEC/R-VERIFY: no builds/tests here; qualified light checks only, verification off-host.
   R-UNTRUSTED: this trusted binding/harness path never serves an untrusted workplace.
-  R-STANDING: host-local loops trusted only; plan surfaces digest-checked on launch/restart/resume.
+  R-STANDING: host loops need trusted class AND local agent placement; membership is insufficient.
+  Remote placements stay workplaces; plan surfaces digest-checked on launch/restart/resume.
   R-WATCH v0/S0a: affected-account journaled stop, admission hold, observer status only.
   No per-account egress-freeze or phone-alert promise; v1/S2 lifecycle open (§§7.3, 16).
   R-ALLSTOP: direct cuts/stops; root start/create/ingress fence before absence.

@@ -1,6 +1,7 @@
 @startuml bring-up-team
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 ' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
+' Revision: accepted architecture-review findings (2026-10-13); class/placement predicates and scoped handoffs.
 title Companion to M-DP1: operator-signed standing team bring-up (specified-but-unpublished)
 actor "Operator" as A
 participant "Phone app\noperator device key; secure element" as P
@@ -81,7 +82,8 @@ note over O,J
   Agent-session origin refuses before effects; observer reads need no confirmation.
   Operator command binary/wire and signature domain/canonical bytes remain unpublished.
   Key enrolment/rotation/phone loss open; terminal re-enrolment proposed (§16).
-  R-STANDING: this host-local-loop team is trusted only; untrusted standing placement is workplace.
+  R-STANDING: this host-local-loop team needs trusted class AND local agent placement.
+  Membership is insufficient; remote standing placements stay workplaces with donor-side loops.
   R-UNTRUSTED: workplace untrusted unless operator-admitted to trusted circle, no subscription binding/lease; slice 0/helper v0 refuse.
   Trusted-circle admission enables donor-side opt-ins only; workplace host boundaries stay.
   R-EXEC/R-VERIFY: machine-selected exec identity/body pin; inert light checks qualified across inputs.

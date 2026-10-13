@@ -1,6 +1,7 @@
 @startuml run-states
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 ' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
+' Revision: accepted architecture-review findings (2026-10-13); class/placement predicates and scoped handoffs.
 title M-DP2: execution run/1 states, service slices (draft; one-shot intake gated)
 state "accepted" as Accepted
 state "queued (later capability)" as Queued
@@ -50,7 +51,8 @@ note right of Terminal
   Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
   Every operator act/record from agent sessions refuses; command/signature formats unpublished (§§3.2, 16).
   swarma-observer reads dispatcher state without confirmation; no mutation authority.
-  R-STANDING: host loops trusted only; untrusted standing placement is workplace.
+  R-STANDING: host loops need trusted class AND local agent placement; membership is insufficient.
+  Remote standing placements stay workplaces with donor-side loops, including circle members.
   R-WATCH v0/S0a: affected-account journaled stop, admission hold, observer status only.
   No per-account egress-freeze or phone-alert promise; v1/S2 lifecycle open (§§7.3, 16).
   R-ALLSTOP: direct cuts/stops; root start/create/ingress fence; unknown holds.
@@ -74,7 +76,8 @@ note right of Terminal
   Host-requested stop recorded distinctly from owner cancel; no new outcome value.
   R-OUTCOME: pending E-stop continues identical arguments; terminal replay never signals.
   Stop scope is account-wide under latest-receipt fence, not session/time window.
-  Dispatcher owns run records, claims, effects, receipts and logs;
+  Dispatcher owns run records, claims, effects, receipts and supervisor output logs;
+  SH2+ host owns output accounting with producer/aggregate retained debt and control reserve (§6);
   helper owns account ledger / termination evidence;
   launcher writes start receipt; broker owns bindings/leases.
   Agent and capacity claim lifecycles: agent-claim-states.puml.

@@ -3,6 +3,7 @@
 ' Revision 2 (2026-10-12): retain one DS note and restore the closed, linked legend.
 skinparam componentStyle rectangle
 ' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
+' Revision: accepted architecture-review findings (2026-10-13); class/placement predicates and scoped handoffs.
 title M-DP1: dispatcher service from slice 0 (draft; not implemented)
 actor "Caller process\n(person, orchestrator or optional board adapter)\ncaller UID; principal + registered key" as C
 rectangle "Service UID: swarma-dispatcher" {
@@ -15,7 +16,7 @@ rectangle "Service UID: swarma-dispatcher" {
 component "swarma-user-manager\nprivileged helper (root)\nowns account ledger / termination evidence" as H
 component "swarma-user-launcher\nroot until GID/UID drop\nwrites start receipt" as L
 component "swarma-credential-broker\nunprivileged broker service\nowns bindings, grants/revocations, leases, secrets" as B
-component "curator-run narrow exec mode\nagent UID; first broker consumer\ntrusted host-local loop only" as E
+component "curator-run narrow exec mode\nagent UID; first broker consumer\ntrusted class + local agent placement for host loop" as E
 component "swarma-session-host service\nSH2+ gated; own service UID\nowns session metadata, logs, receipts, fences" as SH
 component "swarma-session-runner\nSH2+ gated; agent UID\nowns PTY/app-server and lease renewal" as SR
 component "Key keeper\nlater gated integration\nowns registered identity / revocation state" as K
@@ -85,7 +86,10 @@ note right of SH
   Owner consent gates successors; one-start replay grants none.
   Same session/op replay returns one successor; previous claim must be absent.
   Host stop stays dispatcher -> helper E-stop; host-requested, no start authority.
-  Log handoff is unspecified in spec §16 (open question 5).
+  Host owns output/queued-input/evidence budgets per producer and in aggregate (§§6, 9, 12-13).
+  Charge before durable acceptance; retained debt survives replacement/retirement until safe disposition.
+  Bound buffers/refusal; producer output cannot consume hard control/journal reserve.
+  Preserve supervisor output bound; admission refuses without reserve; custody/formats open (question 5).
 end note
 note right of E
   §5.3 intake / Decision 0021 amendment and credential qualification
@@ -117,6 +121,11 @@ note bottom of DS
   Worker requests more by letter/outcome and never fetches.
   DRAFT workspace-result/1 schema in schemas/workspace-result-1.schema.json; blobs, never inline content.
   No dispatcher repository; board import/candidate/review/integration unpublished.
+  Review: positive role/class/placement admission; membership is insufficient (§3.6).
+  Exact-C inert diffs/blobs outside discovery roots; tree entry needs qualified strict adapter.
+  No candidate control-surface adoption; verdict is not control-context admission.
+  Integration-baseline cumulative sensitive/provenance obligations; fresh exact-C acknowledgements.
+  Optional reviewer policies off/unchosen; external-effect performer open for stage T (questions 30, 32).
   R-UNTRUSTED/R-CEILINGS: recorded class and qualified host matrix, no OS-name exclusion.
   Slice 0/helper v0 refuse untrusted; workplace untrusted unless operator-admitted to trusted circle, no subscription binding/lease.
   Trusted-circle admission enables donor-side opt-ins only; workplace host boundaries stay.
@@ -127,7 +136,8 @@ note bottom of DS
   served_policy_digest and service_generation evidence; contract owned by N15.
   R-EXEC/R-VERIFY: protected machine selection + immutable body pin; full invocation/input qualification.
   Worker-code execution/builds/tests are off-host; out-of-bound selection or drift refuses.
-  R-STANDING: trusted host loop only; surface drift refuses launch/restart/resume.
+  R-STANDING: trusted class AND local agent placement for host loops; circle membership supplies neither.
+  Remote placements stay workplaces with donor loops; surface drift refuses launch/restart/resume.
   R-SOCKETS/R-SHARED: declared socket set only; no shared services on untrusted hosts.
   R-WATCH v0/S0a: affected-account journaled stop, admission hold, observer status only.
   No per-account egress-freeze or phone-alert promise; v1/S2 lifecycle open (§§7.3, 16).
