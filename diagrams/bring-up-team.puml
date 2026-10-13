@@ -1,4 +1,5 @@
 @startuml bring-up-team
+' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 title Companion to M-DP1: operator-signed standing team bring-up (specified-but-unpublished)
 actor "Operator" as A
 participant "Phone app\noperator device key; secure element" as P
@@ -20,7 +21,7 @@ else terminal fallback (works without phone)
 end
 O -> O : refuse agent-session origin; require authentication and content confirmation
 O -> D : signed standing team description under swarma-operator authority\nswarma-dispatcher team/1 (unpublished)
-D -> D : authenticate swarma-operator authority; verify signed description and origin/confirmation; record trusted class; check host matrix, exec profile, authority, quotas and leaf constructibility
+D -> D : authenticate swarma-operator authority; verify signed description and origin/confirmation; record trusted class; check host matrix, resolve/pin machine-owned exec identity/body digest, authority, quotas and leaf constructibility
 alt agent-session origin / not operator / absent or invalid signature or confirmation
   break no team effect
     D --> O : refuse; agent.spawn is insufficient
@@ -82,7 +83,8 @@ note over O,J
   R-STANDING: this host-local-loop team is trusted only; untrusted standing placement is workplace.
   R-UNTRUSTED: workplace untrusted unless operator-admitted to trusted circle, no subscription binding/lease; slice 0/helper v0 refuse.
   Trusted-circle admission enables donor-side opt-ins only; workplace host boundaries stay.
-  R-EXEC/R-VERIFY: task exec profile, light checks only; builds/tests off-host.
+  R-EXEC/R-VERIFY: machine-selected exec identity/body pin; inert light checks qualified across inputs.
+  Worker-code execution/builds/tests off-host; caller text is not exec authority.
   R-NET-TOOL: trusted provider-only proxy binding.
   Web default-off; explicit per-identity trusted-circle opt-in only; host boundaries stay.
   No direct/external-http-proxy binding for any platform-host account.
@@ -90,6 +92,8 @@ note over O,J
   served_policy_digest and service_generation evidence; contract owned by N15.
   R-TRANSFER: workspace export recorded/waived before retirement.
   Sweep never expires standing allocations; execution start is separate (§5.3).
+  Never-started standing role without relay: ALLSTOP fresh fenced generation absence,
+  complete launch coverage, no pending launch; no dummy start or automatic retirement (§6).
   Their executions have no max_runtime quota or deadline; sweep never stops them for runtime.
   Explicit stop, operator action, own exit or incident hard stop still ends an execution.
   Trusted direct workers and operator-enrolled orchestrators initially; recursive bootstrap remains gated.

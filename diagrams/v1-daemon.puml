@@ -1,4 +1,5 @@
 @startuml v1-daemon
+' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 title Companion to M-DP1: service from slice 0; later capabilities and gated SH2+ backend
 participant "Caller process\ncaller UID / principal + key" as C
 participant "Read-only account\nswarma-observer" as R
@@ -25,7 +26,7 @@ opt operator state read after control prerequisites
   R -> D : status/list and dispatcher state reads; no confirmation
   D --> R : read-only state; no mutation authority
 end
-D -> D : forward request requires readiness; prepare principal/signature/chains, quota\nrecorded class, qualified host matrix, exec profile\ntrusted provider-only network pin; caller text checked, never authority
+D -> D : forward request requires readiness; prepare principal/signature/chains, quota\nrecorded class, qualified host matrix, machine-selected exec identity/body pin\ntrusted provider-only network pin; caller text checked, never authority
 D -> B : revocation.check exact chains, context prepare
 B --> D : not_revoked / revoked / unavailable + revocation sequence
 alt quota / authority failure or revoked / unavailable
@@ -188,12 +189,16 @@ note over D
   No direct/external-http-proxy binding for any platform-host account.
   N15 (2026-10-13): one listener per account_generation, bound to profile_ref; own port only.
   served_policy_digest and service_generation evidence; contract owned by N15.
-  R-EXEC/R-VERIFY: OS exec allowlist, light checks only; builds/tests off-host.
+  R-EXEC/R-VERIFY: OS exec allowlist + machine-selected immutable body pin.
+  Full invocation/interpreted inputs qualified; worker-code execution/builds/tests off-host.
   R-CEILINGS: class minimums met by published host matrix; no OS-name ban.
   R-STANDING: host-local loop trusted only; digest-check surfaces on launch/restart/resume.
   R-TRANSFER: export obligation before retirement; workspace-transfer.puml.
-  R-WATCH: per-class samples, own-account freeze + journaled stop and phone alert.
-  R-ALLSTOP: manual hold/all stops; service parts journal separately; explicit recovery.
+  R-WATCH v0/S0a: affected-account journaled stop, admission hold, observer status only.
+  No per-account egress-freeze or phone-alert promise; v1/S2 lifecycle open (§§7.3, 16).
+  R-ALLSTOP: direct independent cuts/stops; receiver launch/create/ingress fence before absence.
+  Fresh never-launched absence needs complete launch coverage.
+  Every part including dispatcher reconciliation required before explicit recovery.
   Internal sweep never expires standing allocations or stops them for runtime.
   R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
   Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.

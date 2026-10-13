@@ -1,4 +1,5 @@
 @startuml activation
+' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 title Companion to M-DP3: activation, maintenance and node-wide operator stop (§§6, 11)
 actor "Operator" as A
 participant "Phone app\noperator device key; secure element" as P
@@ -41,42 +42,78 @@ alt invalid authentication / confirmation / signature or agent-session origin
     O --> A : refuse operator act
   end
 else operator act admitted
-  O -> D : authenticated operator node-wide narrowing act; format unpublished
+  O -> O : retain one signed act identity/canonical content; report per-service results
 end
-D -> J : journal act; set fail-closed hold before admission
-D -> H : separately journaled range deny-all effect
-loop every agent/workplace generation and execution
-  D -> J : journal current-execution stop intent; unlocked call
-  D -> H : exec.stop; account-wide confirmed absence required
-  H --> D : absence or unfinished/unknown evidence
-  D -> J : persist real result; retain unresolved claims
+par dispatcher part (when available)
+  O -> D : direct same operator act; verify/idempotently journal at intake
+  D -> J : hold at act admission; before forward admission; no service wait
+else root receiver containment
+  O -> H : direct same act; verify/journal root-owned ALLSTOP mark and range deny-all
+  H -> H : generation lock: fence physical starts (including pre-issued workspace executors)\nclose create/activation frontier and account-process ingress before scanning
+else broker containment
+  O -> B : direct same act; verify/idempotently journal freeze of leases and renewals
+else host containment
+  O -> SH : direct same act; verify/journal delivery closure and bound-board snapshots
 end
-D -> B : separately journaled freeze of all leases and renewals
-B --> D : freeze result; delivered tokens keep vendor lifetime
-D -> SH : separately journaled close delivery and snapshot bound boards
-SH --> D : host result
-alt any part partial / refused / unknown
-  D -> J : preserve all obligations; admission remains closed
-else every part confirmed
-  D -> J : stopped; hold stays until explicit recovery
+note over O,SH
+  Cuts are issued promptly and independently; stops never wait for their acknowledgements.
+  Terminal helper path supports dispatcher-independent generation stops under this act.
+  Phone-to-helper transition, act bytes, evidence and fence/frontier formats remain unpublished (§16).
+  Dispatcher-independent private-state writes are not authorized.
+end note
+par bounded generation stop progress
+  alt dispatcher available
+    D -> H : initiate journaled E-stops under act; root receiver owns termination evidence
+  else dispatcher absent / unready / crash-loop / mid-swap
+    O -> H : terminal operator helper path initiates generation-scoped stops under act
+  end
+  loop fenced inventory of every generation; bounded parallel stop work
+    alt authoritative never launched; complete launch coverage; no pending launch
+      H -> H : fresh qualified generation-bound zero-process observation under fence
+      note right of H : No execution/receipt invented; no dummy start or retirement.
+    else receipt-backed execution
+      H -> H : existing latest-receipt E-stop interlock; account-wide quiet absence
+    else pending launch / lost history / contradictory processes
+      H -> H : reconcile original effects; remain pending; never infer never launched
+    end
+    H --> O : durable generation absence or unfinished/unknown evidence
+  end
+else independent broker result
+  B --> O : freeze result or unknown; delivered tokens keep vendor lifetime
+else independent host result
+  SH --> O : close/snapshot result or unknown
+end
+O -> O : retain undeliverable parts as unknown; retry same act; no whole-act success yet
+opt dispatcher available again
+  O -> D : retry/reconcile same act and root receiver operator-stop evidence
+  D -> J : exclusive ownership/replay; reconcile hold/journal part and operator-stopped outcomes\nclaims released only on confirmed absence; no relaunch
+end
+alt any service part / inventory coverage unknown, partial or refused (dispatcher included)
+  O -> O : whole act pending; admission stays closed; helper stop progress retained
+else every durable part and fenced generation absence confirmed
+  O -> O : whole act stopped; closures remain until explicit recovery
 end
 opt explicit widening operator recovery
   alt phone path
-    A -> P : authenticate; display exact recovery content; biometric confirmation
+    A -> P : authenticate; display stopped set and per-session restart scope; biometric confirmation
     P -> O : signed exact recovery act; forced command, no shell
   else terminal fallback
     A -> T : password sudo; no cached ticket; confirm exact recovery content
     T -> O : signed exact recovery act
   end
   O -> O : verify authentication/signature/exact-content confirmation; refuse agent-session origin
-  O -> D : admitted explicit recovery act; same admission checks; never automatic restart
-  D -> D : require resolved service parts and ordinary readiness before reopening
+  O -> H : direct recovery part; fence release only under qualified recovery contract
+  O -> B : direct recovery part; never waive other closure conditions
+  O -> SH : direct recovery part; restore only expressly admitted restart scope
+  O -> D : recovery part; require every part resolved and ordinary readiness; hold cleared last
+  D -> D : restart needs owner lifecycle authority or fresh admission; never automatic
 end
 note over O,D
   Every operator act is refused from inside agent sessions, including narrowing acts.
   Export waiver, soft-row acceptance, trusted-circle admission and emergency-stop recovery
   are widening acts: authentication plus exact-content confirmation (§3.2).
-  Each service journals its own part; act/record/recovery formats unpublished.
+  Each service journals its own part directly; act/record/recovery formats unpublished.
+  Both never-launched absence and dispatcher-unavailable delivery are distinct acceptance cases (§15).
 end note
 == bounded maintenance attempt ==
 alt main phone path
@@ -134,7 +171,7 @@ end
 note over D,J
   Authorised status/observe/reconcile/stop reachable after control prerequisites.
   R-LOCK: cross-service workers hold no state lock; bounded per-record markers.
-  F-17: declared restore closes admission before bytes visible; external mark,
+  Recovery: declared restore closes admission before bytes visible; external mark,
   ledger epoch floor, independent coverage and reverse accounts/bindings/receipts inventory.
   Orphans require signed swarma-operator decision via phone or terminal; never from agent sessions.
   No restored snapshot certifies absence; no operator key restore into a harness account.

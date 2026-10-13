@@ -1,4 +1,5 @@
 @startuml workspace-transfer
+' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 title R-TRANSFER: dispatcher workspace contract and board exact-candidate path (draft)
 participant "Original caller principal" as C
 participant "Dispatcher\nno repository; journals digests" as D
@@ -20,7 +21,9 @@ note over D,W
   R-UNTRUSTED: workplace untrusted unless operator act admits remote worker to trusted circle.
   Membership enables donor-side opt-ins only; all host boundaries stay.
   Every workplace: no subscription binding or host-local loop.
-  R-NET-TOOL/R-EXEC: workplace zero egress; qualified executable whitelist.
+  R-NET-TOOL/R-EXEC: workplace zero egress; protected machine-selected exec body pin.
+  Full invocation and interpreted inputs qualified; caller reference is not authority.
+  ALLSTOP receiver fence blocks materializer/exporter starts until explicit recovery (§6).
   Worker has no push/merge-request access; code leaves only as platform-taken data.
   R-VERIFY: builds/tests/worker code execution only on off-host secret-free runners.
   Web default-off; explicit per-identity trusted-circle opt-in only.

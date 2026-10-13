@@ -1,4 +1,5 @@
 @startuml components
+' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 ' Revision 2 (2026-10-12): retain one DS note and restore the closed, linked legend.
 skinparam componentStyle rectangle
 title M-DP1: dispatcher service from slice 0 (draft; not implemented)
@@ -42,9 +43,13 @@ component "Read-only per-UID sampler\nleast OS-required privilege" as W
 component "Approved workspace executors\nchild UID; no network" as WX
 component "Verification runners\nother machine; ephemeral; no secrets" as V
 W --> CORE : R-WATCH samples; per-class thresholds
-CORE --> H : own-account freeze + journaled exec.stop
+CORE --> H : v0 affected-account journaled exec.stop; hold/status in dispatcher
 CORE ..> WX : R-TRANSFER materialize / export; workspace-transfer.puml
 C ..> V : board/orchestrator-owned R-VERIFY; job/results formats unpublished
+O ..> CORE : R-ALLSTOP direct act; commit hold at service admission
+O ..> H : R-ALLSTOP direct root mark/range cut + operator stops; terminal path\nphone-to-helper transition gated
+O ..> B : R-ALLSTOP direct lease/renewal freeze
+O ..> SH : R-ALLSTOP direct delivery closure and snapshots
 note bottom of CORE
   Refusal: principal/key/signature/chain/quota failures never queue.
   Capacity: initial refusal; later capability queues and rechecks at dequeue.
@@ -115,11 +120,16 @@ note bottom of DS
   No direct/external-http-proxy binding for any platform-host account.
   N15 (2026-10-13): one listener per account_generation, bound to profile_ref; own port only.
   served_policy_digest and service_generation evidence; contract owned by N15.
-  R-EXEC/R-VERIFY: OS exec profile; no builds/tests here; off-host verification.
+  R-EXEC/R-VERIFY: protected machine selection + immutable body pin; full invocation/input qualification.
+  Worker-code execution/builds/tests are off-host; out-of-bound selection or drift refuses.
   R-STANDING: trusted host loop only; surface drift refuses launch/restart/resume.
   R-SOCKETS/R-SHARED: declared socket set only; no shared services on untrusted hosts.
-  R-WATCH: operator alerts over phone path; formats unpublished.
-  R-ALLSTOP: operator hold/all executions stopped; separate service journals, explicit recovery.
+  R-WATCH v0/S0a: affected-account journaled stop, admission hold, observer status only.
+  No per-account egress-freeze or phone-alert promise; v1/S2 lifecycle open (§§7.3, 16).
+  R-ALLSTOP: direct independent service cuts/stops; receiver launch/create/ingress fence before absence.
+  Never-launched generations need fresh fenced absence + complete launch coverage.
+  Dispatcher failure permits direct stops, but whole-act completion needs its durable part too.
+  Explicit recovery only after all parts; no automatic restart (§6).
 end note
 legend
   Defining spec: [[https://github.com/relux-works/swarma-dispatcher/blob/main/spec/dispatcher.md#2-versions §2 versions]]

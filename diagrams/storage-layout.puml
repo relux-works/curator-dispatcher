@@ -1,10 +1,11 @@
 @startuml storage-layout
+' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 skinparam componentStyle rectangle
 title M-DP3: dispatcher storage ownership and durable ordering, service slices (draft)
 component "swarma-dispatcher process\nservice daemon from slice 0\nservice UID swarma-dispatcher" as D
 component "Supervisor\ndaemon-owned\nsame service UID" as S
 folder "Service-private state root (dispatcher-owned)\n/opt/swarma/services/swarma-dispatcher/state\nmode 0700 (§4.1)" as ROOT {
-  artifact "Immutable input/1\ncaller principal + root request_id, canonical request,\nplan bytes, full caller chain, digests,\nrecorded class, exec-profile reference, lifecycle authorisation + network pin\nworkspace base/archive/manifest/task-resource digests and write scope (§4.2; encoding unpublished)" as INPUT
+  artifact "Immutable input/1\ncaller principal + root request_id, canonical request,\nplan bytes, full caller chain, digests,\nrecorded class, machine-selected exec identity/body-digest pin, lifecycle authorisation + network pin\nworkspace base/archive/manifest/task-resource digests and write scope (§4.2; encoding unpublished)" as INPUT
   artifact "Trusted agent/1 allocations\nuid + generation, binding / leaf / caller chain IDs,\nregistered caller key, ordinary expiry / standing designation, export obligation + cleanup (§4.3; encoding unpublished)" as AG
   artifact "run/1 executions\nowner + input, plan digest, execution claim + epoch,\nordinary-only runtime deadline; supervisor/start/termination evidence, outcome (§§4.4, 6)" as RUN
   artifact "Effect table\nid, component, operation, intent, result, observation (§4.5)" as EFFECT
@@ -73,9 +74,11 @@ note right of SOCKET
   Unknown records keep claims; unbounded shared uncertainty closes admission.
   State loss: external restore fence, independent coverage, reverse inventory.
   Orphans await signed operator decision; no automatic/live adoption.
-  R-WATCH: per-class samples, own-allocation freeze + journaled stop; phone alert.
-  R-ALLSTOP: manual hold/all stops; user-manager/broker/host parts journal separately;
-  unknown/partial keeps admission closed; explicit recovery, no automatic restart.
+  R-WATCH v0/S0a: affected-account journaled stop, admission hold, observer status only.
+  No per-account egress-freeze or phone-alert promise; v1/S2 lifecycle open (§§7.3, 16).
+  R-ALLSTOP: direct independent cuts/stops; receiver launch/create/ingress fence before absence.
+  Fresh never-launched absence needs full launch coverage; unknown stays pending.
+  Every part including dispatcher reconciliation required; explicit recovery, no automatic restart.
   Maintenance: bounded operator attempt; close admission, inventory, authorized exec.stop,
   confirmed absence/reconciliation before mode/schema/binary change; no live adoption.
   Unknown/refused stop defers change; standing allocations and identities retained.

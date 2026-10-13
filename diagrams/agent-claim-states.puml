@@ -1,4 +1,5 @@
 @startuml agent-claim-states
+' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 title M-DP2: allocation, execution claim and capacity ownership, service slices (draft)
 state "agent/1 (dispatcher-owned record; helper owns OS account ledger)" as Agent {
   state "provisioning" as Provisioning
@@ -94,7 +95,10 @@ note bottom of Capacity
   No direct/external-http-proxy binding for any platform-host account.
   N15 (2026-10-13): one listener per account_generation, bound to profile_ref; own port only.
   served_policy_digest and service_generation evidence; contract owned by N15.
-  R-WATCH stops one account only; R-ALLSTOP is manual hold/all stops, explicit recovery.
+  R-WATCH v0: affected-account stop, admission hold and observer status; v1 freeze open.
+  R-ALLSTOP: direct cuts/stops, receiver launch/create/ingress fence before absence.
+  Idle never-launched role: fresh fenced generation absence and full launch coverage; no claim invented.
+  Dispatcher-independent stops retain obligations until every part reconciles; recovery explicit (§6).
   Temporary closure: initial refusal / later gated queue; authority/quota never queue.
   Fresh revocation.check at prepare/dequeue/start; revoked/unavailable refuses.
   Prelaunch checks exclude the claim's own resources.

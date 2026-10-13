@@ -1,4 +1,5 @@
 @startuml run-states
+' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 title M-DP2: execution run/1 states, service slices (draft; one-shot intake gated)
 state "accepted" as Accepted
 state "queued (later capability)" as Queued
@@ -9,7 +10,7 @@ state "cleaning" as Cleaning
 state "Terminal run state\ndone | failed | cancelled | expired" as Terminal
 [*] --> Accepted : dispatcher accepts immutable input
 Accepted --> Queued : later queue capability: temporary capacity closure
-Accepted --> Starting : recorded class + host matrix + exec profile + authority + capacity admitted; fresh revocation.check(start); execution claim
+Accepted --> Starting : recorded class + host matrix + machine-selected exec body pin + authority + capacity admitted; fresh revocation.check(start); execution claim
 Queued --> Starting : authority/window/quota + all gates rechecked; fresh revocation.check(dequeue)
 Queued --> Queued : temporary closure / operator drain park
 Starting --> Running : supervisor registered; launcher receipt recorded
@@ -49,8 +50,10 @@ note right of Terminal
   Every operator act/record from agent sessions refuses; command/signature formats unpublished (§§3.2, 16).
   swarma-observer reads dispatcher state without confirmation; no mutation authority.
   R-STANDING: host loops trusted only; untrusted standing placement is workplace.
-  R-WATCH: own-allocation freeze + journaled stop, phone alert; no unrelated stop.
-  R-ALLSTOP: manual hold/all stops; separate service journals; unknown holds, explicit recovery.
+  R-WATCH v0/S0a: affected-account journaled stop, admission hold, observer status only.
+  No per-account egress-freeze or phone-alert promise; v1/S2 lifecycle open (§§7.3, 16).
+  R-ALLSTOP: direct cuts/stops; root start/create/ingress fence; unknown holds.
+  Every service part including dispatcher reconciliation required before explicit recovery (§6).
   R-TRANSFER: fenced round end/export before retirement; workspace-transfer.puml.
   Standing allocation exit does not retire it; operator-signed retirement only.
   Standing execution: no max_runtime quota or runtime deadline (§§3.5, 4.4).

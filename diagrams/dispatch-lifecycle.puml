@@ -1,4 +1,5 @@
 @startuml dispatch-lifecycle
+' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 title M-DP1: trusted-agent ordinary allocation and one-shot lifecycle (draft; §5.3 intake gate)
 participant "Caller process\ncaller UID / principal + key" as C
 participant "Dispatcher core\nservice UID swarma-dispatcher" as D
@@ -9,7 +10,7 @@ participant "Supervisor\nservice UID; daemon-owned" as S
 participant "swarma-user-launcher\nroot; writes start receipt" as L
 participant "curator-run -> harness\nagent UID; agent home / working directory" as E
 == prepare and provision (§5.1) ==
-C -> C : compose plan, exec-profile reference and resolved PATH; digest
+C -> C : compose plan, requested exec-profile reference and resolved PATH; digest; reference is not authority
 note right of C
   Orchestrator caller: own agent account and Curator home configuration (§5.2).
   Child profile/environment access and narrowed-grant constraints are open (§16).
@@ -17,7 +18,7 @@ end note
 D -> J : establish controls; classify/account for forward readiness (§7.1)
 C -> D : dispatch/1 signed provision or dispatch; caller-scoped root R
 D -> J : local lock: snapshot/intent + per-record marker; unlock for reconciliation calls (§4.1)
-D -> D : principal/key/signature/chains, quotas, constructibility, digest\nrecord class; require qualified host matrix and exec profile\ntrusted provider-only binding; check caller text; pin profile_ref/policy digest
+D -> D : principal/key/signature/chains, quotas, constructibility, digest\nrecord class; require qualified host matrix; resolve/pin protected exec identity/body digest\ntrusted provider-only binding; check caller text; pin profile_ref/policy digest
 D -> B : revocation.check exact chains, context prepare
 B --> D : not_revoked / revoked / unavailable + revocation sequence
 alt prepare refused, revoked or unavailable
@@ -86,7 +87,7 @@ else prepare accepted
 end
 == start (§5.3): only an admitted idle owned allocation ==
 C -> D : start with separate root R-start (dispatch keeps R)
-D -> D : recheck authority / lifetime; capacity claim (initial refusal / later gated queue)
+D -> D : verify pinned exec body/no drift; recheck authority / lifetime; capacity claim (initial refusal / later gated queue)
 note over D,J
   This figure starts ordinary executions: default 4 h, maximum 12 h.
   Record runtime deadline; sweep stops ordinary executions at that deadline (§7.2).
@@ -125,7 +126,7 @@ else launch initiated
     S -> J : failed stage; confirm absence and applicable cleanup
   else launch accepted
     L -> L : user-manager §7 R-FD3 lifecycle; scrub untrusted inherited FDs first
-    L -> L : validate generation / executor / home; retain generation lock and verified executable
+    L -> L : validate generation / executor / home; generation lock: refuse ALLSTOP mark\nverify/apply pinned exec body before child code; retain verified executable
     L -> L : stage bounded immutable FD3; root receipt; complete UID/GID transition
     L -> L : release generation lock after completed transition; retain executable until exec
     L -> E : staged immutable read-only FD3; verified executable retained until exec
@@ -202,8 +203,10 @@ note over D,J
   R-EXEC/R-VERIFY: no builds/tests here; qualified light checks only, verification off-host.
   R-UNTRUSTED: this trusted binding/harness path never serves an untrusted workplace.
   R-STANDING: host-local loops trusted only; plan surfaces digest-checked on launch/restart/resume.
-  R-WATCH: own-allocation freeze + journaled exec.stop; operator phone alert.
-  R-ALLSTOP: manual hold/all-execution stop; service parts journal separately, unknown keeps hold.
+  R-WATCH v0/S0a: affected-account journaled stop, admission hold, observer status only.
+  No per-account egress-freeze or phone-alert promise; v1/S2 lifecycle open (§§7.3, 16).
+  R-ALLSTOP: direct cuts/stops; root start/create/ingress fence before absence.
+  Every service part including dispatcher reconciliation required; unknown keeps hold (§6).
   Expiry cleanup requires wall expiry + trusted time + boot-inclusive elapsed lifetime.
   Direct operator retirement leaves unconfirmed E-unbind as durable obligation.
   Journal intent before every external effect; persist result/observation (§4).
