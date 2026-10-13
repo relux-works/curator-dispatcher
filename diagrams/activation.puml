@@ -60,11 +60,24 @@ alt any part partial / refused / unknown
 else every part confirmed
   D -> J : stopped; hold stays until explicit recovery
 end
-opt explicit authenticated operator recovery
-  O -> D : explicit recovery act; never automatic restart
+opt explicit widening operator recovery
+  alt phone path
+    A -> P : authenticate; display exact recovery content; biometric confirmation
+    P -> O : signed exact recovery act; forced command, no shell
+  else terminal fallback
+    A -> T : password sudo; no cached ticket; confirm exact recovery content
+    T -> O : signed exact recovery act
+  end
+  O -> O : verify authentication/signature/exact-content confirmation; refuse agent-session origin
+  O -> D : admitted explicit recovery act; same admission checks; never automatic restart
   D -> D : require resolved service parts and ordinary readiness before reopening
 end
-note over D,SH : Each service journals its own part; act/record/recovery formats unpublished.
+note over O,D
+  Every operator act is refused from inside agent sessions, including narrowing acts.
+  Export waiver, soft-row acceptance, trusted-circle admission and emergency-stop recovery
+  are widening acts: authentication plus exact-content confirmation (§3.2).
+  Each service journals its own part; act/record/recovery formats unpublished.
+end note
 == bounded maintenance attempt ==
 alt main phone path
   A -> P : review exact content (who, actions, until when); biometric confirmation

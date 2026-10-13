@@ -181,8 +181,13 @@ note over D
   expiry deletion also needs boot-inclusive elapsed lifetime; explicit stop stays reachable.
   Host reboot requester remains open; owner lifecycle consent bounds either candidate.
   Workplace backend is separate/gated: service-owned swarma-rb-exec, enforced helper v1.
-  R-UNTRUSTED: every workplace untrusted; slice 0/helper v0 refuse; no subscription binding/lease.
+  R-UNTRUSTED: workplace untrusted unless operator-admitted to trusted circle; slice 0/helper v0 refuse; no subscription binding/lease.
+  Trusted-circle admission enables donor-side opt-ins only; workplace host boundaries stay.
   R-NET-TOOL/R-RANGE-DENY: workplace zero egress/no proxy; static range rule from v0.
+  Web default-off; explicit per-identity trusted-circle opt-in only; host boundaries stay.
+  No direct/external-http-proxy binding for any platform-host account.
+  N15 (2026-10-13): one listener per account_generation, bound to profile_ref; own port only.
+  served_policy_digest and service_generation evidence; contract owned by N15.
   R-EXEC/R-VERIFY: OS exec allowlist, light checks only; builds/tests off-host.
   R-CEILINGS: class minimums met by published host matrix; no OS-name ban.
   R-STANDING: host-local loop trusted only; digest-check surfaces on launch/restart/resume.
@@ -192,7 +197,7 @@ note over D
   Internal sweep never expires standing allocations or stops them for runtime.
   R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
   Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
-  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  Every operator act/record from agent sessions refuses; command/signature formats unpublished (§§3.2, 16).
   swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Standing retirement/re-creation is operator-only with signed record (§5.4).
   Maintenance: bounded authorized stop attempt; confirmed absence/reconciliation

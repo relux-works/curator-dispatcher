@@ -12,20 +12,26 @@ participant "Board change-request machinery\norchestrator executes; formats unpu
 participant "Trusted reviewer\nnot producer; not untrusted" as R
 == materialize base B ==
 C -> D : admitted base B as bounded canonical tree archive with start
-D -> J : archive digest; plan covers B, manifest digest, write scope, exec profile
+D -> J : archive digest; plan covers B, manifest digest, write scope, exec profile, task-resource digests
 D -> M : relay archive; approved child-UID materialization before work
 M -> W : standalone private repository; fresh config; no hooks/remotes/credential helpers
+M -> W : task resources read-only next to workspace; data, never instructions
 note over D,W
-  R-UNTRUSTED: every workplace untrusted; no subscription binding or host-local loop.
+  R-UNTRUSTED: workplace untrusted unless operator act admits remote worker to trusted circle.
+  Membership enables donor-side opt-ins only; all host boundaries stay.
+  Every workplace: no subscription binding or host-local loop.
   R-NET-TOOL/R-EXEC: workplace zero egress; qualified executable whitelist.
   Worker has no push/merge-request access; code leaves only as platform-taken data.
   R-VERIFY: builds/tests/worker code execution only on off-host secret-free runners.
-  Archive, plan fields, caps and result schema/retention unpublished.
+  Web default-off; explicit per-identity trusted-circle opt-in only.
+  Worker asks for more resources by letter/outcome and never fetches.
+  Archive/plan/resource/transport/retention formats and cap values unpublished.
+  Result schema is DRAFT: schemas/workspace-result-1.schema.json (§5.2.1).
 end note
 W -> W : edit in admitted write scope; platform ignores worker .git/commits/history
 == round end and export ==
 W -> C : board outcome (local) or signed final envelope (remote)
-C -> D : round end; intermediate export allowed at turn boundary under same fence
+C -> D : round end (transport unpublished); intermediate export at turn boundary under same fence
 D -> J : journal current-execution exec.stop intent; retain export obligation
 D -> H : exec.stop; account-wide scope
 H --> D : confirmed absence of every account process, or unknown/pending
@@ -43,12 +49,14 @@ else absence and required fence confirmed
   D -> X : approved child-UID export with fixed environment, no network
   X -> X : walk without following links; skip .git; compare files to plan manifest
   alt forbidden path/type/collision/submodule/root escape or exceeded cap
-    break no result or candidate
-      X --> D : refuse whole export; no partial result
-      D -> J : retain export obligation; home deletion blocked unless operator waiver
+    break refused result; no change set or candidate
+      X --> D : DRAFT workspace-result/1 refused; reason_class + offending_path; entries empty
+      D -> J : journal refusal/result digest; retain export obligation; deletion blocked unless operator waiver
+      D --> C : refused workspace-result/1; original caller only; no partial entries or blobs
     end
   else valid bounded change set
-    X --> D : regular-file content/mode, symlink text and deleted paths
+    X --> D : DRAFT workspace-result/1 recorded; blob SHA-256/size/mode, link text, deletes
+    X --> D : content-addressed blobs; no inline file contents (transport unpublished)
     D -> J : record export/result digests; discharge export obligation
     D --> C : swarma-dispatcher workspace-result/1; original caller only
   end
@@ -79,6 +87,8 @@ note over D,J
 end note
 legend
   Defining spec: §§3.6, 4.2, 5.2-5.4, 14, 16 question 22.
-  Design labels do not publish commands, wire fields, refusal codes or cap values.
+  workspace-result/1 fields and closed reason classes are explicitly authorized DRAFT (§5.2.1).
+  Other design labels do not publish commands, wire fields, refusal codes or cap values.
+  Round-end and blob transport remain unpublished (§16 question 22).
 endlegend
 @enduml

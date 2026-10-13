@@ -53,7 +53,7 @@ loop each described standing role: label, profile, harness, accounts, capabiliti
     alt create confirmed present
       H --> D : uid, generation
       opt helper v1
-        D -> H : fw.apply admitted machine-owned pin; served-digest check; own effect ID
+        D -> H : fw.apply admitted machine-owned pin; served_policy_digest/service_generation check; own effect ID
       end
       D -> D : construct narrowed leaf; keep caller dependency (§3.4)
       D -> J : journal distinct bind effect intent
@@ -80,9 +80,14 @@ note over O,J
   Operator command binary/wire and signature domain/canonical bytes remain unpublished.
   Key enrolment/rotation/phone loss open; terminal re-enrolment proposed (§16).
   R-STANDING: this host-local-loop team is trusted only; untrusted standing placement is workplace.
-  R-UNTRUSTED: every workplace untrusted, no subscription binding/lease; slice 0/helper v0 refuse.
+  R-UNTRUSTED: workplace untrusted unless operator-admitted to trusted circle, no subscription binding/lease; slice 0/helper v0 refuse.
+  Trusted-circle admission enables donor-side opt-ins only; workplace host boundaries stay.
   R-EXEC/R-VERIFY: task exec profile, light checks only; builds/tests off-host.
   R-NET-TOOL: trusted provider-only proxy binding.
+  Web default-off; explicit per-identity trusted-circle opt-in only; host boundaries stay.
+  No direct/external-http-proxy binding for any platform-host account.
+  N15 (2026-10-13): one listener per account_generation, bound to profile_ref; own port only.
+  served_policy_digest and service_generation evidence; contract owned by N15.
   R-TRANSFER: workspace export recorded/waived before retirement.
   Sweep never expires standing allocations; execution start is separate (§5.3).
   Their executions have no max_runtime quota or deadline; sweep never stops them for runtime.

@@ -17,7 +17,7 @@ end note
 D -> J : establish controls; classify/account for forward readiness (§7.1)
 C -> D : dispatch/1 signed provision or dispatch; caller-scoped root R
 D -> J : local lock: snapshot/intent + per-record marker; unlock for reconciliation calls (§4.1)
-D -> D : principal/key/signature/chains, quotas, constructibility, digest\nrecord class; require qualified host matrix and exec profile\ntrusted provider-only binding; check caller text; pin ref/digest
+D -> D : principal/key/signature/chains, quotas, constructibility, digest\nrecord class; require qualified host matrix and exec profile\ntrusted provider-only binding; check caller text; pin profile_ref/policy digest
 D -> B : revocation.check exact chains, context prepare
 B --> D : not_revoked / revoked / unavailable + revocation sequence
 alt prepare refused, revoked or unavailable
@@ -63,7 +63,7 @@ else prepare accepted
     end
   end
   opt helper v1
-    D -> H : fw.apply admitted pin; served-policy digest check; drift refuses\nits own journaled effect; no state lock held
+    D -> H : fw.apply admitted pin; served_policy_digest/service_generation check; drift refuses\nits own journaled effect; no state lock held
   end
   D -> D : leaf agent:generation = request intersect caller intersect own grant
   D -> J : E-bind intent; caller chain + intersection dependency
@@ -194,6 +194,11 @@ note over D,J
   R-FATE: user-manager §7 defines exact process fate/affected sets; old writers fenced.
   R-TRANSFER: standalone private repository from caller archive; no backlink.
   Child-UID materialize/export and board-owned exact-candidate path: workspace-transfer.puml.
+  Task resources read-only beside workspace; plan covers digests; worker never fetches.
+  Web default-off; explicit trusted-circle per-identity opt-in only.
+  No direct/external-http-proxy binding on any platform-host account.
+  N15 (2026-10-13): one listener per account_generation/profile_ref; own port only;
+  served_policy_digest/service_generation evidence; formats owned by N15.
   R-EXEC/R-VERIFY: no builds/tests here; qualified light checks only, verification off-host.
   R-UNTRUSTED: this trusted binding/harness path never serves an untrusted workplace.
   R-STANDING: host-local loops trusted only; plan surfaces digest-checked on launch/restart/resume.
@@ -209,7 +214,7 @@ note over D,J
   no automatic retirement on failure, exit or authority loss.
   R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
   Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
-  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  Every operator act/record from agent sessions refuses; command/signature formats unpublished (§§3.2, 16).
   swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Only operator-signed standing retirement/re-creation (§5.4).
   Outcome kind is separate from run state (§4.4 / §8.2).

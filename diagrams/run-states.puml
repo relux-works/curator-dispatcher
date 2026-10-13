@@ -20,7 +20,7 @@ Running --> Stopping : supervisor known absent; recovery exec.stop; outcome lost
 Stopping --> Stopping : termination missing: repeat same E-stop\nunknown / contradictory: retain state and claim
 Stopping --> Cleaning : stop / absence confirmed; record outcome\nordinary kept / standing idle; retirement only as authorised (§5.4)
 Cleaning --> Cleaning : pending cleanup: same effect IDs\nunknown/refused identity revocation remains pending
-Cleaning --> Terminal : export recorded/waived; applicable cleanup confirmed (§§5.4, 7.1)
+Cleaning --> Terminal : applicable export recorded or waived; applicable cleanup confirmed (§§5.4, 7.1)
 Terminal --> [*]
 note right of Starting
   Owner: dispatcher service UID swarma-dispatcher.
@@ -46,7 +46,7 @@ end note
 note right of Terminal
   R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
   Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
-  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  Every operator act/record from agent sessions refuses; command/signature formats unpublished (§§3.2, 16).
   swarma-observer reads dispatcher state without confirmation; no mutation authority.
   R-STANDING: host loops trusted only; untrusted standing placement is workplace.
   R-WATCH: own-allocation freeze + journaled stop, phone alert; no unrelated stop.

@@ -4,7 +4,7 @@ title M-DP3: dispatcher storage ownership and durable ordering, service slices (
 component "swarma-dispatcher process\nservice daemon from slice 0\nservice UID swarma-dispatcher" as D
 component "Supervisor\ndaemon-owned\nsame service UID" as S
 folder "Service-private state root (dispatcher-owned)\n/opt/swarma/services/swarma-dispatcher/state\nmode 0700 (§4.1)" as ROOT {
-  artifact "Immutable input/1\ncaller principal + root request_id, canonical request,\nplan bytes, full caller chain, digests,\nrecorded class, exec-profile reference, lifecycle authorisation + network pin\nworkspace base/archive/manifest digests and write scope (§4.2; encoding unpublished)" as INPUT
+  artifact "Immutable input/1\ncaller principal + root request_id, canonical request,\nplan bytes, full caller chain, digests,\nrecorded class, exec-profile reference, lifecycle authorisation + network pin\nworkspace base/archive/manifest/task-resource digests and write scope (§4.2; encoding unpublished)" as INPUT
   artifact "Trusted agent/1 allocations\nuid + generation, binding / leaf / caller chain IDs,\nregistered caller key, ordinary expiry / standing designation, export obligation + cleanup (§4.3; encoding unpublished)" as AG
   artifact "run/1 executions\nowner + input, plan digest, execution claim + epoch,\nordinary-only runtime deadline; supervisor/start/termination evidence, outcome (§§4.4, 6)" as RUN
   artifact "Effect table\nid, component, operation, intent, result, observation (§4.5)" as EFFECT
@@ -49,7 +49,7 @@ note bottom of ROOT
   Sweep never stops standing executions for runtime (§§3.5, 4.4, 7.2).
   R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
   Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
-  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  Every operator act/record from agent sessions refuses; command/signature formats unpublished (§§3.2, 16).
   swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Only operator-signed retirement/re-creation (§§4.3, 5.4); never sweep expiry.
   R-TRANSFER: journal archive/result digests; no dispatcher repository.

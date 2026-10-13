@@ -112,7 +112,7 @@ note over D,J
   and sweep stops them through exec.stop when their runtime deadline elapses (§7.2).
   R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
   Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
-  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  Every operator act/record from agent sessions refuses; command/signature formats unpublished (§§3.2, 16).
   swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Standing retirement/re-creation requires operator-signed record (§5.4).
   An absent account never authorises automatic standing re-creation.

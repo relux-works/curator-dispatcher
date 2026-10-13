@@ -18,7 +18,7 @@ state "agent/1 (dispatcher-owned record; helper owns OS account ledger)" as Agen
   Idle --> Retiring : ordinary retire / expiry destruction gate satisfied
   Idle --> Retiring : operator-signed standing retirement
   Retiring --> Retiring : effects pending / observations unknown or contradictory
-  Retiring --> Removed : export recorded/waived; applicable unbind, retire, identity cleanup confirmed
+  Retiring --> Removed : applicable export recorded or waived; applicable unbind, retire, identity cleanup confirmed
   Retiring --> Failed : failed provision; applicable cleanup confirmed
 }
 state "run/1 execution claim (dispatcher-owned; enum §4.4)" as Exec {
@@ -53,7 +53,8 @@ note bottom of Agent
   R-LOCK: intent/in-flight -> unlock call -> lock/fence result; old daemon writers fenced.
   Daemon-owned supervisors run as service UID;
   launcher runs as root until agent UID exec; broker service is unprivileged.
-  R-UNTRUSTED: class recorded, every workplace untrusted; no subscription binding/lease.
+  R-UNTRUSTED: class recorded, workplace untrusted unless operator-admitted to trusted circle; no subscription binding/lease.
+  Trusted-circle admission enables donor-side opt-ins only; workplace host boundaries stay.
   Broker owns trusted bindings/leases; launcher writes start receipt; helper confirms stop.
   Ordinary failed provision unbinds if bound and retires if created.
   R-TRANSFER: export recorded or operator waiver before home deletion.
@@ -66,7 +67,7 @@ note bottom of Agent
   Standing: no expires_at or lifetime quota; sweep never expires it.
   R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
   Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
-  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  Every operator act/record from agent sessions refuses; command/signature formats unpublished (§§3.2, 16).
   swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Only operator-signed retirement or re-creation; no automatic replacement.
   Retirement / re-creation signed-record format is unpublished (§5.4).
@@ -89,6 +90,10 @@ note bottom of Capacity
   Slice 0/helper v0 refuse untrusted; R-EXEC profile required; builds/tests off-host (R-VERIFY).
   R-STANDING: trusted host loop only; untrusted standing placement is workplace.
   R-NET-TOOL/R-RANGE-DENY: zero-egress workplace, provider-only trusted proxy; range rule from v0.
+  Web default-off; explicit per-identity trusted-circle opt-in only; host boundaries stay.
+  No direct/external-http-proxy binding for any platform-host account.
+  N15 (2026-10-13): one listener per account_generation, bound to profile_ref; own port only.
+  served_policy_digest and service_generation evidence; contract owned by N15.
   R-WATCH stops one account only; R-ALLSTOP is manual hold/all stops, explicit recovery.
   Temporary closure: initial refusal / later gated queue; authority/quota never queue.
   Fresh revocation.check at prepare/dequeue/start; revoked/unavailable refuses.

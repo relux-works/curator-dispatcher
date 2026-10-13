@@ -19,7 +19,7 @@ component "swarma-session-runner\nSH2+ gated; agent UID\nowns PTY/app-server and
 component "Key keeper\nlater gated integration\nowns registered identity / revocation state" as K
 component "Operator command\nswarma-operator; no harness sessions\nphone-first signing / terminal fallback" as O
 actor "Read-only account\nswarma-observer" as R
-O --> CORE : signed team/retirement/maintenance/re-grant/all-stop/recovery/export-waiver records\norigin/confirmation checks; formats unpublished
+O --> CORE : signed team/retirement/maintenance/re-grant/all-stop/recovery/export-waiver/soft-row/trusted-circle records\norigin/confirmation checks; formats unpublished
 R --> DMN : dispatcher state reads; no confirmation; no mutation
 C --> DMN : signed requests on dispatch/1 (all slices)
 DMN --> CORE
@@ -63,8 +63,10 @@ note bottom of CORE
   Ordinary executions: default 4 h, maximum 12 h; runtime expiry still stops (§§3.5, 7.2).
   R-OPERATOR: swarma-operator never hosts harness sessions; operator authority stays there.
   Signed operator records: operator device key on phone + biometric/content confirmation, or terminal password/content confirmation.
-  Operator records from agent sessions refuse; command/signature formats unpublished (§§3.2, 16).
+  Every operator act/record from agent sessions refuses; command/signature formats unpublished (§§3.2, 16).
   swarma-observer reads dispatcher state without confirmation; no mutation authority.
+  Widening acts include export waiver, soft-row acceptance, all-stop recovery and trusted-circle admission.
+  Each needs authentication and exact-content confirmation; all operator acts refuse agent-session origin.
   Standing retirement/re-creation only with operator-signed record.
   Operator-signed team/1 bring-up is specified-but-unpublished (§5.5).
   Root caller request ID is correlation, not a shared receiver key.
@@ -101,10 +103,18 @@ note bottom of DS
   R-SVC-EGRESS: dispatcher/host deny-all under v1 service rows; DNS separately qualified.
   R-WORKPLACE: separate gated allocation; service-owned swarma-rb-exec, never workplace UID.
   R-TRANSFER: child-UID materialize/export; caller archive/digests; original-caller-only result.
+  Task resources read-only next to workspace; plan covers digests; data, never instructions.
+  Worker requests more by letter/outcome and never fetches.
+  DRAFT workspace-result/1 schema in schemas/workspace-result-1.schema.json; blobs, never inline content.
   No dispatcher repository; board import/candidate/review/integration unpublished.
   R-UNTRUSTED/R-CEILINGS: recorded class and qualified host matrix, no OS-name exclusion.
-  Slice 0/helper v0 refuse untrusted; every workplace untrusted, no subscription binding/lease.
+  Slice 0/helper v0 refuse untrusted; workplace untrusted unless operator-admitted to trusted circle, no subscription binding/lease.
+  Trusted-circle admission enables donor-side opt-ins only; workplace host boundaries stay.
   R-NET-TOOL/R-RANGE-DENY: workplace zero egress, trusted provider-only proxies; static range rule from v0.
+  Web default-off; explicit per-identity trusted-circle opt-in only; host boundaries stay.
+  No direct/external-http-proxy binding for any platform-host account.
+  N15 (2026-10-13): one listener per account_generation, bound to profile_ref; own port only.
+  served_policy_digest and service_generation evidence; contract owned by N15.
   R-EXEC/R-VERIFY: OS exec profile; no builds/tests here; off-host verification.
   R-STANDING: trusted host loop only; surface drift refuses launch/restart/resume.
   R-SOCKETS/R-SHARED: declared socket set only; no shared services on untrusted hosts.

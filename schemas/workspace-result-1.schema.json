@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DRAFT swarma-dispatcher workspace-result/1",
+  "description": "Wave 5b draft data contract only. CCJ-1 canonical JSON; file bytes are SHA-256-addressed blobs, never inline. Semantic validation and transport/retention remain separate publication gates.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "v",
+    "kind",
+    "execution_id",
+    "round",
+    "account_generation",
+    "base_commit",
+    "manifest_digest",
+    "outcome",
+    "entries",
+    "observed_totals",
+    "exporter_identity",
+    "executor_digest",
+    "result_digest"
+  ],
+  "properties": {
+    "v": {
+      "const": 1
+    },
+    "kind": {
+      "const": "swarma-dispatcher workspace-result/1"
+    },
+    "execution_id": {
+      "$ref": "#/$defs/contextIdentity"
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "account_generation": {
+      "$ref": "#/$defs/contextIdentity"
+    },
+    "base_commit": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})(?![\\s\\S])",
+      "description": "Exact admitted Git commit B; uses the caller repository object format."
+    },
+    "manifest_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "outcome": {
+      "enum": [
+        "recorded",
+        "refused"
+      ]
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entry"
+      },
+      "description": "Unique paths sorted by UTF-8 path bytes; empty on refusal."
+    },
+    "observed_totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file_count",
+        "total_bytes",
+        "binary_count"
+      ],
+      "properties": {
+        "file_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "binary_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "exporter_identity": {
+      "$ref": "#/$defs/contextIdentity"
+    },
+    "executor_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "result_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "refusal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason_class",
+        "offending_path"
+      ],
+      "properties": {
+        "reason_class": {
+          "enum": [
+            "special file",
+            ".git component",
+            "case-fold or normalisation collision",
+            "gitlink",
+            "root escape",
+            "cap"
+          ]
+        },
+        "offending_path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\u0000]+(?![\\s\\S])",
+          "description": "Validated diagnostic path spelling; may be prohibited or outside-root. Never resolve or materialize it."
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "refused"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "refusal"
+        ],
+        "properties": {
+          "entries": {
+            "maxItems": 0
+          }
+        }
+      },
+      "else": {
+        "not": {
+          "required": [
+            "refusal"
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+      "description": "Lowercase SHA-256 hex digest."
+    },
+    "contextIdentity": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Trusted execution/admission context reference, never worker-supplied prose; identity encoding is owned by its existing contract."
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![\\s\\S]*(?:^|/)\\.{1,2}(?:/|(?![\\s\\S])))(?![\\s\\S]*(?:^|/)[.][gG][iI][tT](?:/|(?![\\s\\S])))[^\\u0000/]+(?:/[^\\u0000/]+)*(?![\\s\\S])",
+      "description": "Root-relative validated path; semantic checks for normalization/case collisions and root escape remain mandatory."
+    },
+    "entry": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "path",
+            "mode",
+            "blob_digest",
+            "size"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
+                "add",
+                "modify"
+              ]
+            },
+            "path": {
+              "$ref": "#/$defs/path"
+            },
+            "mode": {
+              "enum": [
+                "regular",
+                "executable"
+              ]
+            },
+            "blob_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "path",
+            "mode",
+            "link_text"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
+                "add",
+                "modify"
+              ]
+            },
+            "path": {
+              "$ref": "#/$defs/path"
+            },
+            "mode": {
+              "const": "symlink"
+            },
+            "link_text": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\u0000]+(?![\\s\\S])",
+              "description": "Exact link text, never followed; validate root confinement semantically."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "path",
+            "mode"
+          ],
+          "properties": {
+            "op": {
+              "const": "delete"
+            },
+            "path": {
+              "$ref": "#/$defs/path"
+            },
+            "mode": {
+              "enum": [
+                "regular",
+                "executable",
+                "symlink"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
