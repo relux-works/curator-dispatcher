@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DRAFT swarma-dispatcher workspace-result/1",
-  "description": "Wave 5b draft data contract only. CCJ-1 canonical JSON; file bytes are SHA-256-addressed blobs, never inline. Semantic validation and transport/retention remain separate publication gates.",
+  "description": "Draft data contract only; field set unchanged. CCJ-1 canonical JSON; file bytes are SHA-256-addressed blobs, never inline. The immutable base manifest compares path, supported Git kind/mode and content identity: mode-only edits and equal-blob regular/symlink transitions are modify; delete carries prior mode. Semantic validation, cleanup/custody evidence and transport/retention remain separate publication gates.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -55,7 +55,7 @@
       "items": {
         "$ref": "#/$defs/entry"
       },
-      "description": "Unique paths sorted by UTF-8 path bytes; empty on refusal."
+      "description": "Unique paths sorted by UTF-8 path bytes; unchanged means kind/mode and content identity both match the admitted immutable base manifest. Mode-only and regular/symlink transitions are modify; deletion carries prior mode. Empty on refusal; this ordering does not define walk order."
     },
     "observed_totals": {
       "type": "object",

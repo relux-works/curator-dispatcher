@@ -1,5 +1,6 @@
 @startuml run-states
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
+' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
 title M-DP2: execution run/1 states, service slices (draft; one-shot intake gated)
 state "accepted" as Accepted
 state "queued (later capability)" as Queued
@@ -21,7 +22,7 @@ Running --> Stopping : supervisor known absent; recovery exec.stop; outcome lost
 Stopping --> Stopping : termination missing: repeat same E-stop\nunknown / contradictory: retain state and claim
 Stopping --> Cleaning : stop / absence confirmed; record outcome\nordinary kept / standing idle; retirement only as authorised (§5.4)
 Cleaning --> Cleaning : pending cleanup: same effect IDs\nunknown/refused identity revocation remains pending
-Cleaning --> Terminal : applicable export recorded or waived; applicable cleanup confirmed (§§5.4, 7.1)
+Cleaning --> Terminal : applicable complete-content custody or per-act waiver; applicable cleanup confirmed (§§5.4, 7.1)
 Terminal --> [*]
 note right of Starting
   Owner: dispatcher service UID swarma-dispatcher.
@@ -54,7 +55,11 @@ note right of Terminal
   No per-account egress-freeze or phone-alert promise; v1/S2 lifecycle open (§§7.3, 16).
   R-ALLSTOP: direct cuts/stops; root start/create/ingress fence; unknown holds.
   Every service part including dispatcher reconciliation required before explicit recovery (§6).
-  R-TRANSFER: fenced round end/export before retirement; workspace-transfer.puml.
+  R-TRANSFER: separate physical materialize/work/export runs with own claims/receipts/stop/absence.
+  Bounded original consent authorizes expiry export only; security holds stay closed; no helper retiring start.
+  Fenced export: every blob/result durable outside deletion before discharge; workspace-transfer.puml.
+  Refusal immutable; current-authority bounded repair uses new work/export effects; discard only per-act waiver.
+  Retained content separately accounted until authenticated import acknowledgement/authorized release.
   Standing allocation exit does not retire it; operator-signed retirement only.
   Standing execution: no max_runtime quota or runtime deadline (§§3.5, 4.4).
   Sweep never stops it for runtime; applies in all backends.

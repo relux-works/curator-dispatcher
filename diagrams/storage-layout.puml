@@ -1,6 +1,7 @@
 @startuml storage-layout
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 skinparam componentStyle rectangle
+' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
 title M-DP3: dispatcher storage ownership and durable ordering, service slices (draft)
 component "swarma-dispatcher process\nservice daemon from slice 0\nservice UID swarma-dispatcher" as D
 component "Supervisor\ndaemon-owned\nsame service UID" as S
@@ -53,8 +54,14 @@ note bottom of ROOT
   Every operator act/record from agent sessions refuses; command/signature formats unpublished (§§3.2, 16).
   swarma-observer reads dispatcher state without confirmation; no mutation authority.
   Only operator-signed retirement/re-creation (§§4.3, 5.4); never sweep expiry.
-  R-TRANSFER: journal archive/result digests; no dispatcher repository.
-  Export recorded or operator waiver precedes home deletion, including direct operator retirement.
+  R-TRANSFER: immutable mode-aware B manifest, archive check and consent/caps/exporter/repair pins.
+  Distinct materialize/work/export run evidence and round/obligation linkage; encoding unpublished.
+  Journal every blob/result complete-content receipt; no dispatcher repository.
+  Durable admitted content custody is outside child home/retirement deletion; location unpublished.
+  Digest-only journal cannot discharge; missing/corrupt/incomplete blobs keep obligation pending.
+  Home deletion needs complete-content custody or per-act operator waiver; standing discard off.
+  Retain content until authenticated import acknowledgement/authorized release; bounded storage accounting.
+  Collection consent is separate from current requester retrieval/release authority.
   Untrusted workplace has no subscription binding/lease; trusted binding records only.
   Ordinary: applicable confirmed unbind then local quiesce / declared-key cleanup / home deletion.
   Direct operator retirement retains unconfirmed broker-cleanup obligation.

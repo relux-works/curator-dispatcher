@@ -1,5 +1,6 @@
 @startuml agent-claim-states
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
+' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
 title M-DP2: allocation, execution claim and capacity ownership, service slices (draft)
 state "agent/1 (dispatcher-owned record; helper owns OS account ledger)" as Agent {
   state "provisioning" as Provisioning
@@ -19,7 +20,7 @@ state "agent/1 (dispatcher-owned record; helper owns OS account ledger)" as Agen
   Idle --> Retiring : ordinary retire / expiry destruction gate satisfied
   Idle --> Retiring : operator-signed standing retirement
   Retiring --> Retiring : effects pending / observations unknown or contradictory
-  Retiring --> Removed : applicable export recorded or waived; applicable unbind, retire, identity cleanup confirmed
+  Retiring --> Removed : applicable complete-content custody or per-act waiver; applicable unbind, retire, identity cleanup confirmed
   Retiring --> Failed : failed provision; applicable cleanup confirmed
 }
 state "run/1 execution claim (dispatcher-owned; enum §4.4)" as Exec {
@@ -58,7 +59,12 @@ note bottom of Agent
   Trusted-circle admission enables donor-side opt-ins only; workplace host boundaries stay.
   Broker owns trusted bindings/leases; launcher writes start receipt; helper confirms stop.
   Ordinary failed provision unbinds if bound and retires if created.
-  R-TRANSFER: export recorded or operator waiver before home deletion.
+  R-TRANSFER: dispatcher retiring is intent; helper stays active until collection/waiver.
+  Each materialize/work/export physical launch has own claim/receipt/stop/absence.
+  Original bounded cleanup consent permits expiry collection, never security-hold bypass/repair.
+  Refusal immutable; new current-authority bounded repair or per-act waiver; standing discard off.
+  Every blob/result durable outside deletion before discharge/home deletion; per-act waiver alternative.
+  Retained content needs authenticated import acknowledgement/authorized release; bounded accounting.
   Retirement: quiesce / declared-key cleanup / home deletion; explicit operator retention only.
   R-TIME: expiry destruction also needs trusted time + monotonic elapsed lifetime.
   R-GEN: fresh random 128-bit generations; restore requires external fence/reverse inventory.

@@ -1,6 +1,7 @@
 @startuml reconcile
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 ' Revision 2 (2026-10-12): distinguish admitted pending stop/retire continuation from observation-only holds.
+' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
 title Companion to M-DP1 / M-DP2: service slices reconciliation (draft)
 participant "Dispatcher core\nservice UID swarma-dispatcher" as D
 database "Dispatcher-owned journal, effects,\ninput/agent/run records and claims" as J
@@ -89,9 +90,20 @@ loop bounded per-record allocation / execution work (§7.1)
   else authorised credential renew-ahead on existing allocation
     D -> B : fresh revocation.check prepare; narrowed E-rebind binding replacement
     D -> J : same uid/generation; old tombstone; horizon update only after confirmation
+  else workspace export; ordinary authority expired, helper not retiring
+    D -> J : check original bounded consent, current security/identity/fences and accounted cleanup capacity
+    D -> H : only consent-authorized exporter; distinct physical claim/launch/receipt/stop/absence
+    D -> J : ambiguous launch resolves original evidence; no duplicate, harness, lease or repair
+  else workspace export; terminal refusal or qualified source permission failure
+    D -> J : immutable evidence; retain obligation; current-authority bounded new repair/effect or per-act waiver
+  else workspace export; interrupted/unknown or incomplete content custody
+    D -> J : same unfinished export effect/arguments; verify result and every blob outside deletion
+    D -> J : missing/corrupt blobs or digest-only record stays pending; no truncation/deletion
+  else workspace export; complete-content custody confirmed
+    D -> J : discharge obligation; retain content until current-authenticated import acknowledgement/authorized release
   else retiring / cleaning; remaining authorised cleanup with known observations
     D -> B : repeat applicable unbind with same effect ID
-    D -> H : retire only after applicable unbind confirmed and workspace export recorded/waived; same retire effect ID
+    D -> H : retire only after applicable unbind confirmed and workspace complete-content custody/per-act waiver; same retire effect ID
     D -> J : applicable one-shot identity cleanup after retirement (§14)\nterminal only after all required confirmations
   end
 end
@@ -103,7 +115,12 @@ note over D,J
   Wait graph: state lock -> local journal/records; unlocked workers -> helper/launcher/broker.
   Bounded workers/sweep; cancel intent prompt; stale results cannot reopen admission/delivery.
   R-FATE user-manager §7; all old-instance supervisor writes fenced, no live adoption.
-  R-TRANSFER: pending export obligation survives failure/expiry/restore; home deletion waits for export or operator waiver.
+  R-TRANSFER: bounded original cleanup consent survives ordinary expiry; security holds stay closed.
+  No exporter after helper retiring; distinct materialize/work/export execution and effect evidence.
+  Pending/refused export obligation survives failure/expiry/restore; standing discard off.
+  Home deletion waits for every blob/result durable outside deletion or per-act waiver.
+  Current-authority repair uses new linked work/export; terminal refusal replay never reruns.
+  Bounded accounted cleanup progress; retained content separately accounted/authenticated.
   Untrusted workplace has no binding: trusted bind/unbind rows are inapplicable, never treated as missing evidence.
   R-CEILINGS/R-EXEC: fresh qualified matrix/profile checks on forward work.
   R-WATCH v0/S0a: affected-account journaled stop, admission hold, observer status only.

@@ -1,5 +1,6 @@
 @startuml v1-daemon
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
+' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
 title Companion to M-DP1: service from slice 0; later capabilities and gated SH2+ backend
 participant "Caller process\ncaller UID / principal + key" as C
 participant "Read-only account\nswarma-observer" as R
@@ -193,7 +194,10 @@ note over D
   Full invocation/interpreted inputs qualified; worker-code execution/builds/tests off-host.
   R-CEILINGS: class minimums met by published host matrix; no OS-name ban.
   R-STANDING: host-local loop trusted only; digest-check surfaces on launch/restart/resume.
-  R-TRANSFER: export obligation before retirement; workspace-transfer.puml.
+  R-TRANSFER: distinct materialize/work/export physical execution evidence; bounded original cleanup consent.
+  Ordinary expiry collection never uses R-SESSION or bypasses security holds; no start after helper retiring.
+  Every blob/result durable outside deletion before discharge; authenticated retained-content release.
+  Immutable refusal, current-authority bounded repair or per-act waiver; workspace-transfer.puml.
   R-WATCH v0/S0a: affected-account journaled stop, admission hold, observer status only.
   No per-account egress-freeze or phone-alert promise; v1/S2 lifecycle open (§§7.3, 16).
   R-ALLSTOP: direct independent cuts/stops; receiver launch/create/ingress fence before absence.

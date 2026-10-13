@@ -2,6 +2,7 @@
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
 ' Revision 2 (2026-10-12): retain one DS note and restore the closed, linked legend.
 skinparam componentStyle rectangle
+' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
 title M-DP1: dispatcher service from slice 0 (draft; not implemented)
 actor "Caller process\n(person, orchestrator or optional board adapter)\ncaller UID; principal + registered key" as C
 rectangle "Service UID: swarma-dispatcher" {
@@ -60,7 +61,7 @@ note bottom of CORE
   Recursive orchestrator provisioning refused until requester-signed bootstrap is qualified.
   Unknown/contradictory observations keep records pending:
   never relaunch, release capacity or declare cleanup successful.
-  Retirement: recorded workspace export or operator waiver before home deletion.
+  Retirement: every blob/result durable outside deletion or per-act waiver before helper retiring/home deletion.
   Quiesce, declared-key cleanup; explicit operator retention only.
   Ordinary provision failure: unbind if bound, retire if created; confirm cleanup.
   Standing: no expiry/lifetime quota; sweep never expires it.
@@ -107,7 +108,11 @@ note bottom of DS
   R-TIME: durable watermark; trusted time + monotonic lifetime gates expiry destruction.
   R-SVC-EGRESS: dispatcher/host deny-all under v1 service rows; DNS separately qualified.
   R-WORKPLACE: separate gated allocation; service-owned swarma-rb-exec, never workplace UID.
-  R-TRANSFER: child-UID materialize/export; caller archive/digests; original-caller-only result.
+  R-TRANSFER: child-UID materialize/export; exact archive/mode-aware immutable B manifest checks.
+  Each physical materialize/work/export has distinct execution evidence; bounded expiry cleanup consent.
+  Refusal immutable; current-authority bounded repair/per-act waiver; security holds stay; standing discard off.
+  Complete-content custody outside deletion; current-authenticated original-caller retrieval/release.
+  Independent repository-B import manifest recomputation; workspace-transfer.puml (§5.2).
   Task resources read-only next to workspace; plan covers digests; data, never instructions.
   Worker requests more by letter/outcome and never fetches.
   DRAFT workspace-result/1 schema in schemas/workspace-result-1.schema.json; blobs, never inline content.

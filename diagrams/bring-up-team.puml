@@ -1,5 +1,6 @@
 @startuml bring-up-team
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
+' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
 title Companion to M-DP1: operator-signed standing team bring-up (specified-but-unpublished)
 actor "Operator" as A
 participant "Phone app\noperator device key; secure element" as P
@@ -90,7 +91,9 @@ note over O,J
   No direct/external-http-proxy binding for any platform-host account.
   N15 (2026-10-13): one listener per account_generation, bound to profile_ref; own port only.
   served_policy_digest and service_generation evidence; contract owned by N15.
-  R-TRANSFER: workspace export recorded/waived before retirement.
+  R-TRANSFER: complete-content custody outside deletion/per-act waiver before helper retiring.
+  Refusal retained/immutable; current-authority bounded repair; standing discard off.
+  Collection consent is separate from authenticated retained-content release; workspace-transfer.puml.
   Sweep never expires standing allocations; execution start is separate (§5.3).
   Never-started standing role without relay: ALLSTOP fresh fenced generation absence,
   complete launch coverage, no pending launch; no dummy start or automatic retirement (§6).

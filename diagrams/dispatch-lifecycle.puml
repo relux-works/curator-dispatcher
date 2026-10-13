@@ -1,5 +1,6 @@
 @startuml dispatch-lifecycle
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
+' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
 title M-DP1: trusted-agent ordinary allocation and one-shot lifecycle (draft; §5.3 intake gate)
 participant "Caller process\ncaller UID / principal + key" as C
 participant "Dispatcher core\nservice UID swarma-dispatcher" as D
@@ -155,7 +156,19 @@ opt ordinary kept allocation
   D -> J : allocation idle after execution finish
 end
 opt ordinary dispatch on-exit, retirement, qualified expiry or failed provisioning
-  D -> J : retiring / cleaning; journal E-unbind intent if bound
+  D -> J : retirement cleanup intent; helper generation stays active until workspace collection/waiver
+  opt workspace-capable allocation
+    D -> D : bounded original-admission cleanup consent; fresh security/fence evidence and capacity
+    D -> J : distinct exporter execution/claim/E-launch/receipt/E-stop/absence; never worker start replay
+    D -> J : every blob/result durable outside deletion + complete-content receipt, or per-act waiver
+    note over D,J
+      Refusal immutable; current-authority bounded repair or per-act waiver; standing discard off.
+      Unknown launch/custody or missing consent keeps obligation pending; security holds never bypassed.
+      Retain content until authenticated import acknowledgement/explicit authorized release.
+      Detailed collection/custody/repair branches: workspace-transfer.puml (§5.2).
+    end note
+  end
+  D -> J : journal E-unbind intent if bound
   opt binding exists
     D -> B : unbind {request_id: E-unbind}
     alt unbind confirmed
@@ -167,7 +180,7 @@ opt ordinary dispatch on-exit, retirement, qualified expiry or failed provisioni
     end
   end
   opt account was created
-    D -> J : discharge workspace export obligation: recorded export or operator waiver\njournal E-retire intent
+    D -> J : require workspace complete-content custody or per-act waiver before helper retiring\njournal E-retire intent
     D -> H : user.retire {request_id: E-retire, home: delete}
     note over D,H : Local retirement only; bounded deletion batches stay pending under E-retire until full confirmation.
     alt retirement confirmed

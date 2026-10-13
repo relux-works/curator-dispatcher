@@ -1,9 +1,11 @@
 @startuml workspace-transfer
 ' Revision (2026-10-13): accepted architecture-review findings (2026-10-13); design only.
+' Workspace revision: accepted architecture-review findings (2026-10-13); design only.
 title R-TRANSFER: dispatcher workspace contract and board exact-candidate path (draft)
 participant "Original caller principal" as C
 participant "Dispatcher\nno repository; journals digests" as D
 database "Dispatcher journal\nplan/digests/export obligation" as J
+database "Admitted durable content destination\noutside child home/deletion; storage or handoff unpublished" as S
 participant "swarma-workspace-materialize\napproved executor; child UID" as M
 participant "Worker\nprivate standalone repository" as W
 participant "User manager\naccount-wide stop scope" as H
@@ -13,10 +15,19 @@ participant "Board change-request machinery\norchestrator executes; formats unpu
 participant "Trusted reviewer\nnot producer; not untrusted" as R
 == materialize base B ==
 C -> D : admitted base B as bounded canonical tree archive with start
-D -> J : archive digest; plan covers B, manifest digest, write scope, exec profile, task-resource digests
-D -> M : relay archive; approved child-UID materialization before work
-M -> W : standalone private repository; fresh config; no hooks/remotes/credential helpers
-M -> W : task resources read-only next to workspace; data, never instructions
+D -> J : archive digest; plan covers immutable B/mode-aware manifest, scope, exec/resources\nexporter digest/caps/repair budget/bounded cleanup consent
+D -> M : relay archive; distinct materializer execution claim/launch/receipt
+M -> M : verify each archive path/kind/mode/content against immutable B manifest
+alt mismatch, missing or extra archive entry
+  break no work admission
+    M --> D : materialization refusal; no worker delta or candidate
+    D -> H : materializer own E-stop/absence; unknown evidence retained
+  end
+else exact archive-to-manifest match
+  M -> W : verified standalone private repository; fresh config; no hooks/remotes/credential helpers
+  M -> W : task resources read-only next to workspace; data, never instructions
+  D -> H : materializer own E-stop; confirmed account-wide absence before distinct work launch
+end
 note over D,W
   R-UNTRUSTED: workplace untrusted unless operator act admits remote worker to trusted circle.
   Membership enables donor-side opt-ins only; all host boundaries stay.
@@ -28,54 +39,95 @@ note over D,W
   R-VERIFY: builds/tests/worker code execution only on off-host secret-free runners.
   Web default-off; explicit per-identity trusted-circle opt-in only.
   Worker asks for more resources by letter/outcome and never fetches.
+  Manifest derives from immutable B objects, never checkout; encoding/access unpublished.
+  Each materialize/work/export launch: own claim, E-launch, receipt, E-stop, absence and round linkage.
+  Bounded cleanup consent survives ordinary expiry only; revocation/compromise/holds need explicit recovery.
+  No harness/lease/network/repair consent; no exporter after helper retiring or session-permit reuse.
+  Accounted bounded cleanup capacity progresses beside forward work; no security/storage exemption.
   Archive/plan/resource/transport/retention formats and cap values unpublished.
   Result schema is DRAFT: schemas/workspace-result-1.schema.json (§5.2.1).
 end note
 W -> W : edit in admitted write scope; platform ignores worker .git/commits/history
 == round end and export ==
 W -> C : board outcome (local) or signed final envelope (remote)
-C -> D : round end (transport unpublished); intermediate export at turn boundary under same fence
+C -> D : round end: next round within one work execution; retry keeps round; final is last\nintermediate export at turn boundary; transport/linkage unpublished
 D -> J : journal current-execution exec.stop intent; retain export obligation
+opt workplace round
+  D -> F : close workspace write and SSH account-process ingress fences before quiescence
+  F --> D : refuse further tool calls/ingress through export
+end
 D -> H : exec.stop; account-wide scope
 H --> D : confirmed absence of every account process, or unknown/pending
-opt workplace round
-  D -> F : write-fence round workspace
-  F --> D : refuse further tool calls into this round
-end
 alt absence or required fence unconfirmed
   break no export or candidate
     D -> J : retain claims/obligation; no export or home deletion
     D --> C : pending/unknown evidence
   end
 else absence and required fence confirmed
-  D -> J : journal export intent
-  D -> X : approved child-UID export with fixed environment, no network
-  X -> X : walk without following links; skip .git; compare files to plan manifest
+  D -> J : admit exporter under bounded consent/current security evidence; distinct physical launch\nretain same effect for interrupted export; terminal replay never reruns
+  D -> X : child-UID export; fixed environment; no network; original launch evidence
+  X -> X : no following links; skip .git; compare immutable manifest kind/mode + content\nmode-only/type transitions are modify; deletion uses prior mode; stop at first cap excess
   alt forbidden path/type/collision/submodule/root escape or exceeded cap
     break refused result; no change set or candidate
       X --> D : DRAFT workspace-result/1 refused; reason_class + offending_path; entries empty
-      D -> J : journal refusal/result digest; retain export obligation; deletion blocked unless operator waiver
-      D --> C : refused workspace-result/1; original caller only; no partial entries or blobs
+      D -> H : exporter own E-stop; confirm absence before any new work launch
+      D -> J : immutable terminal refusal/effect/receipt; retain obligation; no C or automatic discard
+      D --> C : refused workspace-result/1 under current original-caller authentication; no partial entries/blobs
+      opt current work authority + separately admitted repair + plan budget remaining
+        C -> D : request bounded fix-up on same workspace; no re-materialization
+        D -> F : reopen fences only for admitted repair turn
+        D -> W : new linked work execution; class/path only; preserve valid edits
+        D -> F : close write/SSH ingress fences again
+        D -> H : new work E-stop; account-wide absence before new complete export
+        D -> J : count repair against original round budget; new linked export execution/effect\nrepeat full export/custody flow; original refusal stays immutable
+      end
+      note over D,J : No authority/budget: retain for per-act operator waiver; standing discard off.
+      note over C,B : No candidate on refusal; after disposition next ordinary round uses last admitted base.
+    end
+  else qualified source-entry permission denial
+    break typed exporter failure; encoding unpublished; no schema extension
+      X --> D : known blocked entry/ancestor; never chmod, ACL mutation or privilege elevation
+      D -> H : exporter own E-stop/absence; unknown retains claims
+      D -> J : retain terminal failure/obligation; same bounded current-authority repair/per-act waiver disposition
+      D --> C : authenticated failure evidence; known blocked entry/ancestor only; no partial change set
+      note over D,X : Misapplied sandbox/manifest denial is infrastructure failure, not source refusal.
+    end
+  else interrupted or unknown export / infrastructure uncertainty
+    break no terminal verdict or candidate
+      D -> H : reconcile exporter original claim/receipt/E-stop; unknown absence retains claims
+      D -> J : pending/unknown; same effect and canonical arguments; resolve original receipt\nEIO/storage/volume/identity uncertainty never discharges obligation
     end
   else valid bounded change set
     X --> D : DRAFT workspace-result/1 recorded; blob SHA-256/size/mode, link text, deletes
     X --> D : content-addressed blobs; no inline file contents (transport unpublished)
-    D -> J : record export/result digests; discharge export obligation
-    D --> C : swarma-dispatcher workspace-result/1; original caller only
+    D -> H : exporter own E-stop; confirmed account-wide absence before retirement/next launch
+    D -> S : digest/size-verify result and every referenced blob; durable admitted custody
+    alt complete-content receipt durable outside deletion
+      S --> D : authenticated complete-content receipt (format unpublished)
+      D -> J : journal complete-content receipt; discharge obligation; home may retire before import
+      D --> C : workspace-result/1 only under current original-caller authentication
+    else missing/corrupt blob, storage failure or incomplete receipt
+      break retained obligation; no deletion/candidate handoff
+        D -> J : pending custody; digest-only journal is insufficient; no truncation
+      end
+    end
   end
 end
 == board-owned import and exact-commit review after valid export ==
 C -> B : accept result as resource; deterministic import on B
+B -> B : independently recompute canonical mode-aware manifest from repository immutable B\nrefuse base_commit != B or manifest_digest mismatch; retain admission checks
 B -> B : scratch index; no hooks/attribute filters/drivers
 B -> B : refuse .git, outside write scope, .task-board; flag sensitive paths and every symlink
 B -> B : sign candidate C with repository identity; worker/run/result-digest trailers
 B -> B : verify C tree equals recomputed B plus change set
+B -> D : authenticated import acknowledgement (format unpublished)
+D -> S : release retained content only on authenticated acknowledgement or other explicit authorized release
 B -> R : review exactly C; execution only in R-VERIFY
 R --> B : verdict bound to C (K1); flagged paths acknowledged hunk by hunk
 alt changes requested
   B -> C : findings; next admitted base C
   C -> D : next round archive from C; remote signed letter or local task snapshot
-  D -> M : materialize fresh workspace from C; remove old round only after recorded export
+  D -> M : verify/materialize fresh workspace from immutable C manifest\nold home removal only after complete-content custody or per-act waiver
   M -> W : rework on C; donor-side session continues for remote worker
   W -> W : next fenced round/export produces C2 on C; repeat exact-candidate review
 else exact C accepted
@@ -83,7 +135,13 @@ else exact C accepted
   note right of B : Moved base requires ordinary refresh and re-review.
 end
 note over D,J
-  Export cleanup obligation precedes retirement; only explicit operator act waives it.
+  Four classes: recorded export, deterministic refusal, interrupted/unknown, per-act authorized discard.
+  Qualified source permission failure uses the same repair/waiver disposition; format unpublished.
+  Refused effect immutable; same-tree class/recorded-delta conflict contradictory, diagnostics may vary.
+  Retain complete content outside deletion until authenticated import acknowledgement/authorized release.
+  Unavailable caller consumes bounded retained storage; silent pre-import expiry is not delivery.
+  Export custody precedes helper retiring/home deletion; only per-act operator waiver discards.
+  Refusal retains live allocation/home/UID, not work execution slot after confirmed absence.
   No relaxed home permissions or recursive chown; dispatcher holds no repository.
   Import/candidate/review/integration belong to the board and remain unpublished here.
   Remote-workplace protocol v2.1 sections 8 and 10 gates adopted; executor exports under UID.
