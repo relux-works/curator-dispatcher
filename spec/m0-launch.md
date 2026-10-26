@@ -40,10 +40,19 @@ purpose-6 bootstrap staging/currentness remain owning-lane gates. Dispatch never
 creates an account, adopts/rebinds one, changes generation or adds an allowlist
 entry. A recreated generation requires fresh explicit operator setup.
 
+The selected [user-manager setup/ownership delta][manager] (§“Minimal path and
+release boundary”, including its creating-dispatcher requirement) remains a gate:
+station-v0 create is dispatcher-only, and launch/stop check the original creating
+dispatcher. A reviewed protected operator setup and dispatcher/account association
+must satisfy those checks without rewriting allocation ownership, granting the
+operator launcher access or adding a request-field bypass.
+
 Purpose-6 registry publication is not required for this local association. That
-does not waive actual QT-2c/G17 custody, freshness and old-instance exclusion
-dependencies imported by the selected bootstrap/time path. Local approval or
-watermarks cannot stand in for their independent evidence.
+does not waive actual QT-2c, custody, independent freshness or old-instance
+exclusion dependencies imported by the selected bootstrap/time path. G17 is a
+conditional proposed backend, not a universal broker or manager prerequisite;
+the actual selected contracts must supply their required guarantees. Neither
+local approval nor watermarks supply independent evidence or lifetime exclusion.
 
 ## 2. Closed proposed forms and signing
 
@@ -117,7 +126,18 @@ time remains required. Require `not_before < not_after` and window <=3600 s.
 Maximum runtime is 1..3600 s, additionally cut by policy expiry/removal. M0 is an
 ordinary bounded run, not a standing allocation or a change to standing-runtime
 rules. One hour limits this candidate's exposure and state horizon rather than
-claiming an existing deployment default.
+claiming an existing deployment default. This M0 window/runtime does not clip
+broker lease authority: the actual broker policy governs its separate horizon.
+
+For these closed ASCII request shapes, maximum CCJ-1 request preimages are
+**964 bytes dispatch / 1019 bytes cancel**, including the 28-byte domain and LF.
+Four serial fields (policy revision, association revision, registration number,
+master epoch) each have at most 16 decimal digits; all other spellings have fixed
+lengths. Dispatch is 28 + 872 + 4×16 = 964 bytes; cancel adds 55 bytes for its
+operation spelling and target member. The 904-byte dispatch specimen uses four
+one-digit serials. These finite maxima do not widen to Keymaker's separate generic
+24576/24577-byte boundary. [Inert counterexamples][counterexamples] distinguish
+that generic boundary from this subset; runtime enforcement remains pending.
 
 One selected policy lineage, one worker, one admitted dispatch ID and one cancel
 ID; same-ID retries reuse records. Further IDs refuse before reservation (one
@@ -159,23 +179,33 @@ closes forward admission and initiates the same retained stop obligation.
    catalog and exact worker active generation, confinement/capacity and tuple.
    Under local serialization revalidate evidence versions/fences; reserve the
    durable request, capacity claim and launch debit before recording launch intent.
-2. **Serialized start.** Re-read policy and time/currentness at the actual
-   generation-excluded start boundary, recheck every pin, stop/cancel intent and
-   original deadline. Journal a durable in-flight launch with its original
-   execution/effect identity; unlock for service I/O. The receiver must participate
-   in qualified generation/start/revocation exclusion through physical start.
-   A prepare check or dispatcher-local mutex alone is insufficient.
+2. **Serialized start.** Dispatcher re-reads policy and time/currentness and
+   rechecks every pin, stop/cancel intent and original deadline. Journal a durable
+   in-flight launch with its original execution/effect identity; unlock for service
+   I/O. Its evaluation must join the jointly selected receiver-owned durable
+   original-execution start/stop invalidation interlock through physical start.
+   The receiver enforces its own selected fence facts; it does not evaluate
+   dispatcher policy or grants. A prepare check or dispatcher-local mutex alone
+   is insufficient. External evidence is acquired outside locks; no RPC runs
+   under receiver locks.
 3. **Removal versus physical start.** Let Rv be the protected durable removal/
    expiry-invalidation boundary observed by admission and the receiver's shared
    exclusion, and S be receiver-serialized physical-start authorization immediately
    before child code. If Rv precedes S, no physical start is permitted. If S wins,
    that original execution is in scope for mandatory stop even when its receipt
    arrives after Rv. No new admission or launch authorization can linearize after
-   observed Rv. For expiry, S independently checks the qualified original expiry,
-   not a cached prepare result. This specifies observable ordering, not
-   instantaneous kernel visibility of file removal. The owning lanes must publish
-   how removal reaches that shared boundary without a cross-service lock cycle;
-   until they do, M0 start is closed.
+   observed Rv. Original expiry must be enforced at S through the jointly gated
+   receiver-fence integration, not a cached prepare result or a new launcher
+   policy evaluator. This specifies observable ordering, not instantaneous kernel
+   visibility of file removal. The owning lanes must publish how Rv and expiry
+   reach that same exclusion, S's exact order relative to receipt, UID/GID drop
+   and exec, and crash/late-reply handling without a cross-service lock cycle.
+   Current generation exclusion ends at UID/GID drop before exec; the writer
+   epoch fences a stale supervisor, not policy removal by a current one. A valid
+   prepare followed by removal and delayed launch therefore passes today's own
+   launcher facts. Until the joint interlock is selected, published and qualified,
+   M0 start is closed; no policy field, grant verifier or boolean bypass is added
+   to the current launcher request.
 4. **Late reply.** Lock only to revalidate the original record, controller fence,
    generation, current policy and cancel/stop intent after I/O. A successful late
    launch receipt attaches to that original effect and advances stop, never
@@ -196,9 +226,15 @@ stop remains required. This subset grants no new status or operator wire grammar
 
 Journal canonical R and its digest, authenticated caller tuple, all pins,
 original deadlines, reservation/debit, original run identity and each distinct
-lease/launch/stop/release effect identity before its call. Main §4.5's original
-effect derivation and distinct operation scopes apply; receiver encodings remain
-gated. Serialize competing IDs and both operations against the same lineage.
+dispatcher-owned launcher/stop effect identity before its call. Main §4.5's
+original effect derivation applies to those dispatcher-owned operations; receiver
+encodings remain gated. Worker-owned broker lease effects are separate: neither
+this journal nor an inherited full-path effect name authorizes dispatcher broker
+calls. Only the allowlisted worker kernel peer UID executes `lease.request` and
+normal `lease.release`; dispatcher is never added to that allowlist. Any required
+authenticated executor/intake evidence handoff must be separately published and
+qualified; no request field or broker method is invented here. Serialize
+competing IDs and both operations against the same lineage.
 An accepted dispatch spends the sole physical-start entitlement durably; failure
 or confirmed absence does not give another attempt a new entitlement.
 
@@ -222,23 +258,28 @@ only. Lost or restored evidence cannot be classified as never launched. The
 receiver's durable deduplication must ensure at most one child start under every
 crash cut; inability to establish that closes this receiver selection.
 
-## 5. P7 stop and retained cleanup
+## 5. P7, proposed M0 envelope and retained cleanup
 
 Removal/expiry closes new admission at observed Rv and triggers durable
-account-generation-wide stop. Proposed budget: protected invalidation/time
-observation <=30 s and fenced confirmed stop <=270 s, with
+account-generation-wide stop. The **proposed M0 removal/expiry-to-absence
+envelope** is observation <=30 s plus fenced confirmed absence <=270 s, with
 `detect_seconds + stop_seconds <=300 s`, or shorter actual qualified bounds.
-The P7 clock begins at authoritative removal commit or original expiry, **not**
-at convenient receipt arrival or eventual polling detection. Detection includes
-watch/poll loss, time scheduling and restart; stop includes in-flight launch
-reconciliation, fencing further starts, all descendants and the receiver's quiet
-period/confirmation. The ordinary minute sweep alone proves no such bound.
+Its original absolute deadline starts at authoritative removal commit or original
+expiry. Main P7 remains <=300 s from its original detection event; it is not
+renamed or restarted by this proposal. Retain both original events and absolute
+deadlines across retry/restart and enforce the earliest of original P7, the M0
+envelope or any shorter applicable qualified deadline. Neither receipt arrival
+nor delayed polling may reset them. Detection includes watch/poll loss, time
+scheduling and restart; stop includes in-flight launch reconciliation, fencing
+further starts, all descendants and the receiver's quiet period/confirmation.
+The ordinary minute sweep alone proves no such bound.
 
-This is a required proposed worst-case bound, **not a demonstrated capability**.
-Before activation, time/currentness and receiver owners must qualify the source,
-maximum detection delay, scheduler/failure assumptions, stop duration and
-independent stop progress during dispatcher failure for the exact Linux tuple.
-If those cannot fit P7, refuse activation; do not reset the deadline or declare
+The M0 envelope is a new conditional joint worst-case qualification requirement,
+**not a demonstrated capability or a source P7 guarantee**. Before activation,
+time/currentness and receiver owners must qualify the source, maximum detection
+delay, scheduler/failure assumptions, stop duration and independent stop progress
+during dispatcher failure for the exact Linux tuple. If the actual path cannot
+meet every applicable deadline, refuse activation; do not reset it or declare
 success. On overrun/unknown, retain the live claim, durable stop/incident and
 cleanup debt, close affected forward work and report the unmet bound. Stop work
 continues under its original authority and effect; unknown time does not delay
@@ -252,14 +293,47 @@ lease, missing receipt and failed inventory are not absence. A known never-start
 generation still needs authoritative no-launch coverage and fenced absence;
 unknown history cannot use that disposition.
 
-Cleanup is the selected published broker-v0 lease-release disposition and
-receiver stop evidence, with durable obligations retained on unknown/refusal.
-There is **no binding to unbind**. No new broker/helper operation is invented:
-the exact v0 release/observation and receiver stop/absence join must be selected
-and accepted by their owners. If an additional helper cleanup join is needed,
-it is a publication gate, not implicit authority. The preprovisioned station and
-its enrollment remain operator-owned; M0 does not retire it or borrow station-v0
-operator-only export-waiver retirement. Output/export/custody and ordinary
+### Broker-v0 ownership, horizon and cleanup debt
+
+[Broker v0][broker] §§2, 6–7 defines worker kernel-peer ownership. On normal
+teardown the worker confirms its private app-server descendants absent and
+releases its own lease. An admitted foreign peer receives `lease_not_owner`;
+dispatcher is not an allowlisted worker peer and cannot release on its behalf.
+If the worker is killed/dies before cleanup, no callback or release is assumed:
+the lease remains until original `authorized_until`, at most the actual selected
+broker-policy limit (default 3600 s). Disconnect/restart neither releases nor
+extends it; `lease.renew` never extends `authorized_until`. Expiry without release
+is an expiry disposition, **not successful release**. Release also cannot revoke
+a delivered vendor token's independent lifetime.
+
+V0 provides no dispatcher lease-state observer or foreign-owner release receipt;
+its peer-scoped account `status` is not lease observation. Dispatcher records
+receiver-owned stop and confirmed account-wide absence, the sound original lease
+horizon when known, and retained evidence/debt. It asserts no broker-side cleanup
+receipt. A worker's absence proves neither a prior release nor absence of an
+earlier delivered credential. Stop/absence progress is independent of lease
+and delivered-token disposition.
+
+Horizon provenance is a cross-owner publication/qualification gate. Use either a
+separately published/qualified authenticated executor evidence handoff of the
+original horizon, or a protected actual broker-policy maximum with a retained
+original occurrence and qualified time that soundly bounds **every possible
+worker lease**. The latter needs qualified latest-possible-issuance coverage
+(including in-flight calls and receiver stop/absence), original absolute bounds
+and policy-version history; first start plus a guessed hour is insufficient.
+The M0 validity window does not shorten a lease. No caller assertion, guessed
+request field, missing worker or unavailable v0 API can establish this evidence.
+The exact intake/coverage/time join must be selected by executor, broker and
+dispatcher owners before it is used. Unknown horizon, time or provenance retains
+lease debt and refuses its completion while required stop continues. A sound
+elapsed upper horizon plus receiver absence may record lease expiry, never a
+successful release or vendor-token revocation; unknown token disposition remains
+separate retained debt. No unavailable observer is a prerequisite.
+
+There is **no binding to unbind**. Additional helper cleanup, if needed, remains
+a publication gate. The preprovisioned station and its enrollment remain
+operator-owned; M0 does not retire it or borrow station-v0 operator-only
+export-waiver retirement. Output/export/custody and ordinary
 retirement guarantees remain intact; if the selected worker produces workspace
 content, preserve the full export/custody obligations and keep the claim/debt
 until their separately published path is available. A terminal execution verdict
@@ -269,9 +343,11 @@ does not assert cleanup completion while any obligation remains.
 
 All examples are synthetic and nonproduction. The [fixture index][fixtures]
 distinguishes executable **shape checks** from these semantic obligations;
-neither is runtime qualification. Each negative below has its adjacent allowed
-control, conditional on every gate in §7. Schema-valid semantic violations must
-still refuse at signer/receiver; a schema pass never attests authority.
+neither is runtime qualification. [Paired inert byte/semantic records][counterexamples]
+make selected counterexamples reproducible as documents, with runtime enforcement
+PENDING. Each negative below has its adjacent allowed control, conditional on
+every gate in §7. Schema-valid semantic violations must still refuse at
+signer/receiver; a schema pass never attests authority.
 
 | Surface | Positive control | Negative/control boundary |
 |---|---|---|
@@ -280,7 +356,9 @@ still refuse at signer/receiver; a schema pass never attests authority.
 | Current policy | Current exact protected source at prepare **and S**, with qualified time/exclusion. | Removed/expired/rolled-back/unknown source, generation change or missed invalidation; Rv before S refuses; S before Rv mandates original stop even on late receipt. |
 | One launch/replay | One reserved dispatch; exact retry recovers original effect with current gates. | Concurrent/changed-body/new-ID/reinstalled-policy/crash replay cannot launch twice; unknown receipt retains claim and original effect. |
 | Recovery boundary | Sound owned cancel/recovery after launch authority closes, or independently authorized operator stop. | Reconciliation renews launch, old signature/association revives authority, cancel selects a foreign account, unknown time blocks required explicit stop: forbidden. |
-| Absence/cleanup | Fenced generation-bound account-wide quiet-period absence plus selected lease release and retained custody evidence. | Leader exit/lost receipt/failed read becomes absence, missing release is success, automatic station retirement/unbind or discarded output debt: forbidden. |
+| Lease owner | Allowlisted worker requests and normally releases its own lease after teardown. | Dispatcher lease call or admitted foreign-owner release; no allowlist widening; foreign release is `lease_not_owner`. |
+| Killed worker/horizon | Receiver confirms account-wide absence; sound original horizon expires with retained evidence, no release asserted. | Lost release/EOF/restart becomes release, renewal extends original horizon, guessed or unknown horizon clears debt: forbidden. |
+| Absence/cleanup | Fenced generation-bound account-wide quiet-period absence; lease/token and custody dispositions tracked separately. | Leader exit/lost receipt/failed read becomes absence, expiry or missing release is success, automatic station retirement/unbind or discarded debt: forbidden. |
 
 ## 7. Publication, review and activation gates
 
@@ -289,9 +367,9 @@ still refuse at signer/receiver; a schema pass never attests authority.
 | Integration, Architect, dispatcher and Keymaker | Accept this single policy/request/signing-plan variant and numeric bounds; jointly amend SC-Q2 for existing-worker dispatch/cancel rather than the full provision/start form. Exact candidate consumer review pending. |
 | Operator/curator and installer | Owner acceptance, protected install/removal transaction, source path/ACL/atomicity/currentness/audit, acyclic purpose-6 public staging, rotation and association version/epoch rules. No install/activation performed or delegated. |
 | Keymaker + generation/time/storage owners | SC-Q4 final generation/exclusion/release ordering and authority time; SC-Q6 owning-store budget, durable result/replay/audit and old-reader fence; qualified first caller and published purpose-6 bootstrap. No guessed bootstrap fields. |
-| User-manager/launcher + dispatcher | Selected launcher/FD3/exec-profile/start/stop/effect.observe intake and encoding, generation/revocation exclusion, durable one-launch replay, original-effect/account-wide absence and independent P7 stop. Station `active` alone is insufficient. |
+| User-manager/launcher + dispatcher | Selected launcher/FD3/exec-profile/start/stop/effect.observe intake and encoding, protected setup/creating-dispatcher association, receiver-owned durable original-execution Rv/expiry/S interlock, one-launch replay, original-effect/account-wide absence and independent stop within earliest P7/M0 deadline. No launcher policy evaluator. Station `active` alone is insufficient. |
 | Executor/harness/catalog owners | Compatible one-shot executor intake and full typed immutable plan/profile/harness/exec-policy provenance/body/ownership, confinement, export/custody and finite evidence/result accounting. No arbitrary command or opaque enabled plan. |
-| Broker + integration | **Actual v0 activation**, exact versioned lease adapter, allowlist UID mapping, final credential/currentness/release/observation predicates and all additional activation audit rows required by broker. Not just peer + runner evidence; no copied credential fallback. |
+| Broker + integration | **Actual v0 activation**, worker-owned versioned lease adapter, exact worker-only allowlist UID mapping and broker's actual final credential/currentness predicates; separately agreed authenticated executor evidence or protected policy/original-occurrence horizon coverage and debt accounting. No dispatcher broker observer or foreign release. All required broker activation audit rows remain, not just peer + runner; no copied credential fallback. |
 | Native qualification authority + all consumers | Exact Linux OS/kernel/architecture/hardware/firmware, boot/node/backend/image/profile, all service/harness/collector revisions, source/test/config, caller/worker UID-generation/association/epoch, units/users/groups/FDs/sandbox/mount/env/network tuple. Qualify the production entry and invalidation/P7, not support labels. Linux CI is not deployment; macOS stays native-gated. |
 | Keymaker, Architect, broker, integration; independent reviewer; curator | Review exact draft and subsequent implementation separately, preserve negative controls and exact evidence, then explicit owner acceptance before installation/activation. No consumer or independent acceptance is claimed here. |
 
@@ -299,3 +377,6 @@ still refuse at signer/receiver; a schema pass never attests authority.
 [codec]: https://github.com/relux-works/swarma-registrar/blob/5f44ebf/ccj/ccj.go
 [envelope]: https://github.com/relux-works/swarma-registrar/blob/5f44ebf/envelope/envelope.go
 [fixtures]: ../fixtures/m0-launch/README.md
+[manager]: https://github.com/relux-works/swarma-user-manager/blob/7b90a07/docs/design/first-run-launch-stop.md
+[broker]: https://github.com/relux-works/swarma-credential-broker/blob/8709e215a1b6bc7f42094a14e4a5620e2baed290/spec/v0-codex-refresher.md
+[counterexamples]: ../fixtures/m0-launch/counterexamples.md

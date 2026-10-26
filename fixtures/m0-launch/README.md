@@ -50,3 +50,25 @@ leader-only exit are **semantic negatives**, not schema-invalid fixtures. See
 the adjacent semantic vectors in candidate §6. Meta-schema/fixture validation
 does not prove these gates; their owning production implementations must supply
 paired tests and narrowing controls before acceptance/activation.
+
+## Coverage and enforcement boundary
+
+[Inert counterexample records](counterexamples.md) are separate document pairs,
+not additional shape fixtures. The 20 existing JSON shape fixtures are unchanged.
+
+| Scope | Executable shape check | Inert pair / reference | Runtime enforcement |
+|---|---|---|---|
+| Unknown/nested members, operation branches, required members, field spelling/bounds | Four positive and sixteen negative fixtures above; JSON Schema 2020-12 | Candidate §2 | PENDING |
+| Exact domain and no final LF | Not a schema property; existing 904-byte specimen/digest can be compared | `exact-preimage` control and wrong-domain/final-LF records | PENDING, no crypto/CCJ implementation |
+| Exact receiver/current caller generation | Both changed requests remain well-shaped | `current-pins` control and wrong-receiver/stale-generation records | PENDING, no authority test |
+| Finite closed M0 preimage maximum | Shape field bounds permit an ASCII length calculation, not general canonicalization | Candidate §2: dispatch 28+872+64=964; cancel 1019; specimen 904 | PENDING |
+| Generic Keymaker preimage cap | Not an M0 shape positive | `generic-preimage-length`: 24576 / 24577, length only, both outside M0 | PENDING |
+| Broker peer ownership | Not a request schema property | `worker-lease-owner`: normal owner release / foreign-owner refusal | PENDING; documentary pinned-source witness only |
+| Killed worker and lease disposition | Not a schema property | `killed-worker-horizon`: sound horizon / unavailable horizon, unchanged deadline and false-release records | PENDING; no broker observer exists for dispatcher |
+| Raw duplicates/escaped aliases, BOM/encoding, numeric tokens, depth, framing, CCJ and signatures | Outside decoded shape checks | Registrar CCJ-1 and candidate §2; JSON decoding may lose duplicate or lexical information | UNRUN; no parser/codec qualification |
+| Other authority/replay/currentness/stop/custody semantics | Outside shape checks | Candidate §§3–7 adjacent vectors and closed owning-lane gates | PENDING |
+
+No schema pass, document record, finite size calculation or source witness
+attests a real signature, service refusal, current caller, launch, stop, cleanup
+or accepted numeric bound. In particular integral decimal/exponent lexical forms
+and duplicate members can be lost by decoding before JSON Schema sees them.
