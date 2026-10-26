@@ -22,6 +22,8 @@ finite endpoint/load ceilings against pinned Keymaker B0–B5. The complete join
 workload and separate pre-B0 worker-status setup budget remain unqualified;
 consumer/independent review and owner acceptance precede implementation.
 
+A separate [DRAFT closed executor-entry proposal](spec/m0-executor-entry.md) defines one finite FD3 input and deterministic existing `run-codex` argv/UTF-8 stdin mapping, with [inert specimens](fixtures/m0-executor-entry/README.md). Exact owning selection, typed catalog/installation, native qualification and authenticated Result joins remain gates; no adapter runtime is supplied.
+
 ## Principles
 
 - The dispatcher runs under its own unprivileged service account; root stays in the helper and the launcher.

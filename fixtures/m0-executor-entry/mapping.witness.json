@@ -1,0 +1,40 @@
+{
+  "status": "INERT; no selected installation or execution authority",
+  "protected_example": {
+    "E": "/example/protected/swarma-credential-broker",
+    "H": "/example/station",
+    "original_deadline_seconds": 290,
+    "now_seconds": 20,
+    "hypothetically_qualified_slack_seconds": 10
+  },
+  "argv": [
+    "/example/protected/swarma-credential-broker",
+    "run-codex",
+    "--account",
+    "example",
+    "--profile",
+    "codex-refresher-v0",
+    "--launch-home",
+    "/example/station/tmp/m0/EX-11111111111111111111111111111111/home",
+    "--model",
+    "catalog-model",
+    "--reasoning-effort",
+    "catalog-effort",
+    "--output-last-message",
+    "/example/station/tmp/m0/EX-11111111111111111111111111111111/last-message.txt",
+    "--prompt-stdin",
+    "--cwd",
+    "/example/station/work",
+    "--timeout",
+    "240"
+  ],
+  "argv_nul_terminated_bytes": 392,
+  "stdin_utf8_bytes": 28,
+  "stdin_sha256": "sha256:be554947a6d7aeadc543165404280ce420ee050ee4d8e8c8d4de755cb8f7b03f",
+  "stdin_eof": true,
+  "added_lf": false,
+  "input_ccj1_bytes": 186,
+  "input_ccj1_sha256": "sha256:c02aff6b4c3f3a0a79f47d6e407472e62bf8cd632c93a6c8268a0de31ddda080",
+  "entry_ccj1_bytes": 1445,
+  "entry_ccj1_sha256": "sha256:53fcb7c23380cf55059abac127dd5513e203c73cadc4c39bec4fa0304b86a851"
+}

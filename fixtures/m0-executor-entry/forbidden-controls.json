@@ -1,0 +1,254 @@
+[
+  {
+    "id": "missing",
+    "change": "remove /input/prompt",
+    "obligation": "lexical/shape",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "extra",
+    "change": "add /input/argv = [\"--resume\",\"x\"]",
+    "obligation": "lexical/shape; argv/stdin",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "null",
+    "change": "set /input/prompt = null",
+    "obligation": "lexical/shape",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "duplicate",
+    "change": "append a second \"v\":1 top-level member",
+    "obligation": "lexical/shape",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "escaped-duplicate",
+    "change": "append \"\\u0076\":1 top-level member",
+    "obligation": "lexical/shape",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "invalid-utf8",
+    "change": "replace one prompt byte with FF",
+    "obligation": "lexical/shape",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "bom",
+    "change": "prefix EF BB BF",
+    "obligation": "lexical/shape",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "surrogate",
+    "change": "replace prompt with JSON string \"\\ud800\"",
+    "obligation": "lexical/shape",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "noninteger",
+    "change": "replace top v token with 1.0 or 1e0",
+    "obligation": "lexical/shape",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "negative-zero",
+    "change": "replace controller_epoch token with -0",
+    "obligation": "lexical/shape",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "range",
+    "change": "set controller_epoch = 9007199254740992",
+    "obligation": "lexical/shape",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "depth",
+    "change": "replace prompt with nine nested objects",
+    "obligation": "finite byte/work; lexical/shape",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "size",
+    "change": "prefix enough JSON whitespace to reach 49153 bytes",
+    "obligation": "finite byte/work",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "escape-size",
+    "change": "replace prompt with 24576 escaped U+0001 characters",
+    "obligation": "finite byte/work",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "identity",
+    "change": "change worker.uid to 30003 without changing protected original",
+    "obligation": "protected identity/provenance",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "generation",
+    "change": "change worker.generation to 32 zeros",
+    "obligation": "protected identity/provenance",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "association",
+    "change": "change association.revision to 2 without original update",
+    "obligation": "protected identity/provenance",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "pins",
+    "change": "change catalog to sha256 plus 64 zeros",
+    "obligation": "protected identity/provenance",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "opaque",
+    "change": "replace input with {\"body\":\"opaque\"}",
+    "obligation": "lexical/shape; protected identity/provenance",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "selectors",
+    "change": "set account to --config or model to --resume",
+    "obligation": "argv/stdin",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "injected-member",
+    "change": "add any of path,argv,env,token,resume,config,prompt_file to input",
+    "obligation": "argv/stdin",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "catalog",
+    "change": "set reasoning_effort to printable noncatalog value",
+    "obligation": "protected identity/provenance",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "home-prompt",
+    "change": "replace Prompt bytes with an adapter home-file read",
+    "obligation": "argv/stdin",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "fd",
+    "change": "deliver an extra descriptor4 or mutable/truncated FD3",
+    "obligation": "handle/drop/FD",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "clock",
+    "change": "use timeout300 after original290 deadline, or round0.9 remainder to1",
+    "obligation": "original clocks/stop/replay",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "second-start",
+    "change": "retry physical start/prompt after unknown original effect",
+    "obligation": "original clocks/stop/replay",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "unqualified",
+    "change": "mark unavailable qualification observer as satisfied",
+    "obligation": "qualification/config",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "config",
+    "change": "treat unreadable dedicated-service config as absent/public-copy eligible",
+    "obligation": "qualification/config",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "result",
+    "change": "consume old0600 output after nonzero/unknown or call stdout authenticated durable Result",
+    "obligation": "Result/debt",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "late-stop",
+    "change": "rewrite runner0 after successful rename as runner130",
+    "obligation": "Result/debt",
+    "expected": "REFUSE or retain original debt; never execute as a new admission"
+  },
+  {
+    "id": "native-adapter",
+    "change": "substitute a shebang adapter or npm/node Codex wrapper for the protected native binary",
+    "obligation": "handle/drop/FD; qualification/config",
+    "expected": "REFUSE qualification/selection; digest equality does not pin an interpreter"
+  },
+  {
+    "id": "fd3-left-open",
+    "change": "retain the admitted plan open-file object or any duplicate in run-codex or downstream, irrespective of descriptor number",
+    "obligation": "handle/drop/FD",
+    "expected": "Kernel object-identity observation must fail qualification; broker later reusing numeric3 for another object is not a failure"
+  },
+  {
+    "id": "environment",
+    "change": "adapter adds CODEX_HOME/model/endpoint variables or rewrites helper PATH",
+    "obligation": "argv/stdin; qualification/config",
+    "expected": "REFUSE adapter mapping; pass only unchanged helper environment, broker constructs vendor environment"
+  },
+  {
+    "id": "d-path",
+    "change": "protected M0 D-PATH differs from /usr/bin:/bin while broker vendor PATH remains fixed",
+    "obligation": "protected identity/provenance; qualification/config",
+    "expected": "REFUSE profile equality/selection; no adapter rewrite or new broker flag"
+  },
+  {
+    "id": "transitive-exec",
+    "change": "infer an empty OS allowlist from text-only prompt, or admit an unqualified transitive shell/tool",
+    "obligation": "qualification/config",
+    "expected": "REFUSE use until actual minimum inventory and full R-EXEC invocation qualification exist"
+  },
+  {
+    "id": "drop",
+    "change": "enter adapter code before verified supplementary group removal and real/effective/saved GID/UID drop",
+    "obligation": "handle/drop/FD",
+    "expected": "REFUSE manager qualification; preserve original receipt/effect debt"
+  },
+  {
+    "id": "before-c",
+    "change": "run adapter decoder/loader/constructor before receiver durable C",
+    "obligation": "original clocks/stop/replay",
+    "expected": "REFUSE selected-A qualification; no decoder exemption"
+  },
+  {
+    "id": "pin-drift",
+    "change": "mutate each request plan pin, execution effect/epoch or protected original independently",
+    "obligation": "protected identity/provenance",
+    "expected": "REFUSE exact protected equality; never substitute or allocate a new claim"
+  },
+  {
+    "id": "result-overflow",
+    "change": "discard unknown original outcome or stop/token/custody debt when capture fills",
+    "obligation": "Result/debt",
+    "expected": "Keep admission closed and original debt; no inferred no-effect or new launch"
+  },
+  {
+    "id": "agent-handle-reexec",
+    "change": "model tool inherits/reopens pinned agent executable or re-execs via inherited descriptor or /proc fd/exe path",
+    "obligation": "handle/drop/FD; qualification/config",
+    "expected": "REFUSE qualification/use until broker fix and actual native trace; path allowlist alone does not establish this property"
+  },
+  {
+    "id": "numeric-fd-false-positive",
+    "change": "call a later broker-owned non-plan descriptor numbered3 a plan leak solely by its number",
+    "obligation": "handle/drop/FD",
+    "expected": "Reject evidence inference; identify original plan object/all duplicates, distinguish later broker objects"
+  },
+  {
+    "id": "path-kernel-conflation",
+    "change": "claim OS exec refusal because PATH differs or executable is absent from PATH",
+    "obligation": "qualification/config",
+    "expected": "Reject evidence inference; protected environment conformance and actual OS forbidden-exec evidence are separate"
+  }
+]
