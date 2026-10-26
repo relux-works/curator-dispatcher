@@ -170,3 +170,192 @@ is unavailable. Earlier delivered tokens retain their actual independent lifetim
 ```
 
 [broker]: https://github.com/relux-works/swarma-credential-broker/blob/8709e215a1b6bc7f42094a14e4a5620e2baed290/spec/v0-codex-refresher.md
+
+## Selected-A interlock document pairs
+
+These pairs follow the [landed receiver design][interlock] and candidate §§3–5.
+The bounds are qualification predicates, not invented numeric residual allowances
+or runnable protocol fields. All runtime controls and native instrumentation
+remain **PENDING**. B retains its separate strict native-release obligations.
+
+### C versus Rv and expiry
+
+```json
+{
+  "id": "m0-c-order",
+  "control": {
+    "order": "root receipt < verified UID/GID drop < C < Rv/expiry",
+    "facts": "exact protected publisher/projection/generation/claim/controller/validity; original unspent debit",
+    "expect": "one original committed execution; all other gates and original stop limits apply"
+  },
+  "counterexamples": [
+    {
+      "order": "prepare < Rv <= C",
+      "expect": "refuse C; no target code; retain preparatory evidence/cleanup until fenced absence"
+    },
+    {
+      "order": "prepare < expiry = C",
+      "expect": "refuse C at equality even with dispatcher unavailable"
+    },
+    {
+      "order": "prepare < expiry < C",
+      "expect": "refuse C after expiry; cached prepare cannot authorize"
+    },
+    {
+      "order": "verified drop < C",
+      "facts": "stale projection or wrong publisher/claim/controller/generation",
+      "expect": "refuse before target code; active account alone is insufficient"
+    }
+  ]
+}
+```
+
+### Committed C, delayed S and bounded residual
+
+```json
+{
+  "id": "m0-a-delayed-s",
+  "control": {
+    "order": "receipt < verified drop < C < expiry < S",
+    "bounds": "qualified C-to-exec-or-abort and residual intervals fit every original component/completion deadline",
+    "stop": "explicitly installed independent receiver authority progresses during dispatcher failure",
+    "expect": "A permits only original committed execution with retained stop; not strict B"
+  },
+  "counterexamples": [
+    {
+      "order": "C < expiry < S",
+      "bounds": "unqualified handoff/residual or independent stop",
+      "expect": "M0 remains closed; timer alone is not qualification"
+    },
+    {
+      "order": "C < Rv < S",
+      "claim": "A proves strict B or no worker instructions after expiry",
+      "expect": "forbidden strict claim; B retains ExpiryAtNativeS and atomic native release gates"
+    },
+    {
+      "order": "C < expiry < S",
+      "bounds": "residual added after original stop deadline",
+      "expect": "forbidden new allowance; residual fits inside every original deadline"
+    }
+  ]
+}
+```
+
+### Missed completion and original unknown effects
+
+```json
+{
+  "id": "m0-late-refusal",
+  "control": {
+    "order": "C < exec-or-abort within qualified interval and original deadlines",
+    "expect": "original result may resolve under current gates; spent debit never refills"
+  },
+  "counterexamples": [
+    {
+      "order": "C < missed qualified completion interval or original deadline",
+      "effect": "attempted/unknown, receipt delayed",
+      "expect": "refuse success; retain original receipt/incarnation/effect, spent debit, claim, stop debt and reconciliation; refusal is not absence"
+    },
+    {
+      "order": "C < crash/lost reply/restore",
+      "action": "new child/effect or retry launch or rearmed debit",
+      "expect": "forbidden; observe/stop same original effect, including conclusive non-start without refill"
+    }
+  ]
+}
+```
+
+### Every resumer and writer participates
+
+```json
+{
+  "id": "m0-all-resumers",
+  "control": {
+    "participants": "all resumers, recovery, invalidators, generation/stop/emergency writers",
+    "state": "original execution reconciled; whole-account quiet-period absence under complete history and fences",
+    "expect": "absence discharges only corresponding obligation; every later resume stays closed"
+  },
+  "counterexamples": [
+    {
+      "state": "confirmed account-wide absence",
+      "action": "late original or alternate resumer executes",
+      "expect": "forbidden even with valid old C; no new child/effect"
+    },
+    {
+      "participants": "happy-path launcher only",
+      "action": "recovery or generation/stop writer bypasses shared C/Rv gate",
+      "expect": "forbidden; receiver selection remains unqualified"
+    },
+    {
+      "state": "leader exit, failed scan or missing receipt only",
+      "expect": "not absence; retain claim and stop debt"
+    }
+  ]
+}
+```
+
+### Pending invalidation preserves original clocks
+
+```json
+{
+  "id": "m0-close-before-publish",
+  "control": {
+    "order": "journal original removal intent and close admission < unlock < durable receiver Rv plus original stop < ACK < completed publication",
+    "expect": "only receiver closure may justify completed removal; still not stop receipt or absence"
+  },
+  "counterexamples": [
+    {
+      "state": "receiver contact unavailable",
+      "expect": "pending removal, admission closed and debt retained; no completed revocation/absence"
+    },
+    {
+      "state": "Rv/ACK/publication delayed",
+      "expect": "retain original removal intent/incident/detection/expiry and earlier deadlines; idempotent closed retry only"
+    },
+    {
+      "state": "out-of-protocol file edit",
+      "expect": "incident with detection and stop; no retrospective proof of ordered Rv"
+    }
+  ]
+}
+```
+
+### Earliest component and completion deadlines
+
+```json
+{
+  "id": "m0-earliest-deadline",
+  "control": {
+    "removal": 0,
+    "detection": 20,
+    "p7_ceiling": 320,
+    "detection_stop_ceiling": 290,
+    "m0_total_ceiling": 300,
+    "stop_ceiling": 290,
+    "expect": "stop including residual/reconciliation/quiet period by 290 or any earlier original P7/shorter qualified deadline; detection <=30 independently"
+  },
+  "counterexamples": [
+    {
+      "stop_at": 291,
+      "claim": "within M0 total 300 and P7 320 so compliant",
+      "expect": "refuse compliance; detection+270 was missed; keep stop/debt"
+    },
+    {
+      "earlier_original_deadline": 280,
+      "stop_at": 290,
+      "expect": "refuse compliance; earlier outstanding P7/shorter qualified bound wins"
+    },
+    {
+      "state": "restart, delayed receipt or pending invalidation resets clock",
+      "expect": "forbidden; original absolute component/completion deadlines survive"
+    },
+    {
+      "state": "unknown time",
+      "action": "wait for time confidence before explicit authorized stop",
+      "expect": "forbidden; close forward C but progress authorized stop"
+    }
+  ]
+}
+```
+
+[interlock]: https://github.com/relux-works/swarma-user-manager/blob/e5a6ca608d5ecc92a36a8b8cd1f6a81340318abc/docs/design/m0-start-invalidation.md

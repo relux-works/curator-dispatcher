@@ -65,6 +65,12 @@ not additional shape fixtures. The 20 existing JSON shape fixtures are unchanged
 | Generic Keymaker preimage cap | Not an M0 shape positive | `generic-preimage-length`: 24576 / 24577, length only, both outside M0 | PENDING |
 | Broker peer ownership | Not a request schema property | `worker-lease-owner`: normal owner release / foreign-owner refusal | PENDING; documentary pinned-source witness only |
 | Killed worker and lease disposition | Not a schema property | `killed-worker-horizon`: sound horizon / unavailable horizon, unchanged deadline and false-release records | PENDING; no broker observer exists for dispatcher |
+| Selected-A C/Rv/expiry and exact protected facts | No runtime entry point | `m0-c-order`: valid C / Rv-first, expiry equality/past and stale protected facts | PENDING |
+| A delayed S and residual inside original bounds; B preserved | No native mechanism qualified | `m0-a-delayed-s`: bounded original start / missing qualification, false strict-B claim and added allowance | PENDING |
+| Late refusal retains original effect/debit/claim/stop | No runtime entry point | `m0-late-refusal`: timely completion / missed interval or deadline, crash/relaunch | PENDING |
+| All-resumer closure and absence | No runtime entry point | `m0-all-resumers`: fenced full absence / late resumer, writer bypass and false absence | PENDING |
+| Close before publish and unavailable receiver | No control/store protocol published | `m0-close-before-publish`: journal/close/unlock/Rv/stop/ACK/publish / pending contact, shifted clocks and file edit | PENDING |
+| Earliest original component/completion limits | Document arithmetic only | `m0-earliest-deadline`: removal 0, detection 20, ceiling 290 / 291, earlier 280 and reset/unknown-time negatives | PENDING |
 | Raw duplicates/escaped aliases, BOM/encoding, numeric tokens, depth, framing, CCJ and signatures | Outside decoded shape checks | Registrar CCJ-1 and candidate §2; JSON decoding may lose duplicate or lexical information | UNRUN; no parser/codec qualification |
 | Other authority/replay/currentness/stop/custody semantics | Outside shape checks | Candidate §§3–7 adjacent vectors and closed owning-lane gates | PENDING |
 
