@@ -52,10 +52,24 @@ operator launcher access or adding a request-field bypass.
 
 Purpose-6 registry publication is not required for this local association. That
 does not waive actual QT-2c, custody, independent freshness or old-instance
-exclusion dependencies imported by the selected bootstrap/time path. G17 is a
-conditional proposed backend, not a universal broker or manager prerequisite;
-the actual selected contracts must supply their required guarantees. Neither
-local approval nor watermarks supply independent evidence or lifetime exclusion.
+exclusion dependencies imported by the selected bootstrap/time path. For the
+actual M0 importing scopes — Keymaker bootstrap/custody and broker time/D5 —
+the selected required path is **WC1 plus one common synchronous independent G17
+custodian**, with a **separate lifetime fence** excluding restored, prepared and
+old-instance effects, writes, signing and releases. Each consumer retains its
+own owning history, enrollment, identities, installation, namespace, credentials
+and original occurrences. A common custodian does not merge streams or
+credentials or permit cross-consumer evidence substitution. Manual restore,
+local approval or a local watermark cannot substitute for this custody or fence.
+
+Ordinary current user-manager create/retire/launch/stop operations are not M0
+custodian consumers. Later manager PC2 MC-Q5/A3d-2 is a separate consuming scope
+on the common custodian only when separately published and qualified; no current
+manager custodian adapter or protocol is implied. The selected importing path
+does not turn ordinary broker-v0 alternatives into a universal service dependency.
+Provider/placement selection, typed protocol/profile, complete originals,
+currentness/continuity, bounded endpoint/load and exact native qualification
+remain closed gates; selection alone supplies none of their evidence.
 
 ## 2. Closed proposed forms and signing
 
@@ -366,18 +380,22 @@ receipt. A worker's absence proves neither a prior release nor absence of an
 earlier delivered credential. Stop/absence progress is independent of lease
 and delivered-token disposition.
 
-Horizon provenance is a cross-owner publication/qualification gate. Use either a
-separately published/qualified authenticated executor evidence handoff of the
-original horizon, or a protected actual broker-policy maximum with a retained
-original occurrence and qualified time that soundly bounds **every possible
-worker lease**. The latter needs qualified latest-possible-issuance coverage
-(including in-flight calls and receiver stop/absence), original absolute bounds
-and policy-version history; first start plus a guessed hour is insufficient.
+Horizon provenance is a cross-owner publication/qualification gate. The only
+selected path is **horizon (b): a protected actual broker-policy maximum plus
+qualified complete coverage of every possible original, in-flight and latest
+worker lease issuance**. Retain each original occurrence and authorized absolute
+horizon, actual policy-version history and qualified sound time. Coverage must
+join latest-possible issuance, including in-flight calls, to receiver stop and
+account-wide confirmed absence; first start plus a guessed hour is insufficient.
+Separately published/qualified authenticated executor evidence may corroborate
+this coverage, never replace it or constitute an alternative horizon path.
 The M0 validity window does not shorten a lease. No caller assertion, guessed
 request field, missing worker or unavailable v0 API can establish this evidence.
 The exact intake/coverage/time join must be selected by executor, broker and
-dispatcher owners before it is used. Unknown horizon, time or provenance retains
-lease debt and refuses its completion while required stop continues. A sound
+dispatcher owners before it is used. Incomplete possible-issuance coverage or
+unknown horizon, time or provenance retains unknown lease debt and refuses its
+completion while required stop continues, even if the worker is absent and
+schemas pass. A sound
 elapsed upper horizon plus receiver absence may record lease expiry, never a
 successful release or vendor-token revocation; unknown token disposition remains
 separate retained debt. No unavailable observer is a prerequisite.
@@ -412,7 +430,8 @@ signer/receiver; a schema pass never attests authority.
 | One launch/replay | One reserved dispatch; exact retry recovers original effect with current gates. | Concurrent/changed-body/new-ID/reinstalled-policy/crash replay cannot launch twice; unknown receipt retains claim and original effect. |
 | Recovery boundary | Sound owned cancel/recovery after launch authority closes, or independently authorized operator stop. | Reconciliation renews launch, old signature/association revives authority, cancel selects a foreign account, unknown time blocks required explicit stop: forbidden. |
 | Lease owner | Allowlisted worker requests and normally releases its own lease after teardown. | Dispatcher lease call or admitted foreign-owner release; no allowlist widening; foreign release is `lease_not_owner`. |
-| Killed worker/horizon | Receiver confirms account-wide absence; sound original horizon expires with retained evidence, no release asserted. | Lost release/EOF/restart becomes release, renewal extends original horizon, guessed or unknown horizon clears debt: forbidden. |
+| Selected importing custody | WC1/common synchronous independent G17 with separate old-instance fence; complete consumer-specific history/identity and all provider/protocol/native gates. | Manual/local-watermark substitute or cross-consumer history cannot authorize effects, writes, signing or releases; ordinary manager operations gain no custodian dependency. |
+| Killed worker/horizon | Horizon (b): protected actual policy maximum, complete original/in-flight/latest issuance coverage, original absolute horizons and sound time plus receiver account-wide absence; retain evidence and separate debt. | Executor-only report or uncovered issuance cannot clear lease debt; required stop continues. Lost release/EOF/restart is not release, renewal cannot extend the original horizon. |
 | Absence/cleanup | Fenced generation-bound account-wide quiet-period absence; lease/token and custody dispositions tracked separately. | Leader exit/lost receipt/failed read becomes absence, expiry or missing release is success, automatic station retirement/unbind or discarded debt: forbidden. |
 
 ## 7. Publication, review and activation gates
@@ -422,9 +441,10 @@ signer/receiver; a schema pass never attests authority.
 | Integration, Architect, dispatcher and Keymaker | Accept this single policy/request/signing-plan variant and numeric bounds; jointly amend SC-Q2 for existing-worker dispatch/cancel rather than the full provision/start form. Exact candidate consumer review pending. |
 | Operator/curator and installer | Owner acceptance, protected install/removal transaction, source path/ACL/atomicity/currentness/audit, acyclic purpose-6 public staging, rotation and association version/epoch rules. No install/activation performed or delegated. |
 | Keymaker + generation/time/storage owners | SC-Q4 final generation/exclusion/release ordering and authority time; SC-Q6 owning-store budget (a separate joint contribution remains queued under Keymaker; no new B0–B5 number), durable result/replay/audit and old-reader fence; qualified first caller and published purpose-6 bootstrap. No guessed bootstrap fields. |
+| Keymaker + broker time/D5 importing owners | Required WC1/common synchronous independent G17 plus separate old-instance lifetime fence; isolated owning histories/enrollment/identities/installations/namespaces/credentials/original occurrences. Provider/placement, typed protocol/profile, complete originals/currentness/continuity, endpoint/load and exact native qualification remain closed. Ordinary manager operations are excluded; later PC2 MC-Q5/A3d-2 is separate. No manual/watermark or cross-consumer substitute. |
 | User-manager/launcher + dispatcher | Selected launcher/FD3/exec-profile/start/stop/effect.observe intake and encoding, protected setup/creating-dispatcher association, receiver-owned durable original-execution C/Rv/expiry interlock under A, qualified C-to-exec-or-abort/residual intervals, all-resumer closure, one-launch replay, original-effect/account-wide absence and independently installed stop within every original P7/M0 component/completion deadline. Protected control/store/authentication/outcome, currentness/retention/restore/time and bounded lock integration remain unpublished/unqualified; B additionally retains strict native S/deadline composition. No launcher policy evaluator. Station `active` alone is insufficient. |
 | Executor/harness/catalog owners | Compatible one-shot executor intake and full typed immutable plan/profile/harness/exec-policy provenance/body/ownership, confinement, export/custody and finite evidence/result accounting. No arbitrary command or opaque enabled plan. |
-| Broker + integration | **Actual v0 activation**, worker-owned versioned lease adapter, exact worker-only allowlist UID mapping and broker's actual final credential/currentness predicates; separately agreed authenticated executor evidence or protected policy/original-occurrence horizon coverage and debt accounting. No dispatcher broker observer or foreign release. All required broker activation audit rows remain, not just peer + runner; no copied credential fallback. |
+| Broker + integration | **Actual v0 activation**, worker-owned versioned lease adapter, exact worker-only allowlist UID mapping and broker's actual final credential/currentness predicates; only horizon (b), protected actual policy maximum with complete original/in-flight/latest issuance coverage, actual policy history, original occurrences/absolute horizons, sound time, receiver stop/account-wide absence and separate retained lease/token/custody debt. Executor evidence is corroborative only. No dispatcher broker observer or foreign release. All required broker activation audit rows remain, not just peer + runner; no copied credential fallback. |
 | Native qualification authority + all consumers | Exact Linux OS/kernel/architecture/hardware/firmware, boot/node/backend/image/profile, all service/harness/collector revisions, source/test/config, caller/worker UID-generation/association/epoch, units/users/groups/FDs/sandbox/mount/env/network tuple. Qualify the production entry and invalidation/P7, not support labels. Linux CI is not deployment; macOS stays native-gated. |
 | Keymaker, Architect, broker, integration; independent reviewer; curator | Review exact draft and subsequent implementation separately, preserve negative controls and exact evidence, then explicit owner acceptance before installation/activation. No consumer or independent acceptance is claimed here. |
 

@@ -126,14 +126,54 @@ admission earlier. No real broker refusal is measured here.
 }
 ```
 
+## Selected importing custody and separate old-instance fence
+
+These hypothetical facts describe only Keymaker bootstrap/custody and broker
+time/D5 importing scopes in candidate §1. Common infrastructure preserves each
+consumer's own histories, enrollment, identities, installation, namespace,
+credentials and original occurrences. All provider/placement, typed protocol,
+complete-original/currentness/continuity, endpoint/load and native gates remain
+PENDING. Ordinary manager create/retire/launch/stop is outside this consuming
+scope; later PC2 MC-Q5/A3d-2 requires separate publication and qualification.
+
+```json
+{
+  "id": "m0-selected-custody",
+  "control": {
+    "scope": "actual Keymaker or broker time/D5 importing scope",
+    "custody": "required WC1 plus common synchronous independent G17",
+    "history": "complete originals and currentness/continuity for this consumer's own enrollment, identities, installation, namespace and credentials",
+    "fence": "separate lifetime exclusion of restored/prepared/old-instance effects, writes, signing and releases",
+    "expect": "only eligible when every owning provider/protocol/native gate is qualified; no runtime authority asserted"
+  },
+  "counterexamples": [
+    {
+      "custody": "manual restore or local watermark replaces required WC1/G17",
+      "expect": "refuse imported authority before effects, writes, signing or releases; retain recovery debt"
+    },
+    {
+      "history": "another consumer's otherwise qualified history or credentials",
+      "expect": "refuse cross-consumer substitution; common custodian does not merge authority"
+    },
+    {
+      "custody": "qualified WC1/common synchronous independent G17",
+      "fence": "missing separate old-instance lifetime exclusion",
+      "expect": "remain closed; custody alone cannot exclude restored/prepared/old-instance effects"
+    }
+  ]
+}
+```
+
 ## Killed worker, original horizon and debt
 
 [Broker v0 §§6–7][broker] says killed-runner cleanup has no assumed callback;
 original `authorized_until` persists. The sound upper horizon below is a
-hypothetical result of the separately published/qualified executor evidence or
-protected actual broker-policy/original-occurrence/time coverage in candidate
-§5, not a caller assertion. Stop/absence is required even when horizon evidence
-is unavailable. Earlier delivered tokens retain their actual independent lifetime.
+hypothetical result of selected horizon (b) only: protected actual broker-policy
+maximum plus qualified complete original/in-flight/latest possible-issuance
+coverage, retained original occurrences/authorized absolute horizons, actual
+policy-version history and sound time in candidate §5. Executor evidence may
+corroborate, never substitute. Stop/absence is required even when coverage is
+unavailable. Earlier delivered tokens retain their actual independent lifetime.
 
 ```json
 {
@@ -141,11 +181,23 @@ is unavailable. Earlier delivered tokens retain their actual independent lifetim
   "control": {
     "worker": "killed before release",
     "receiver_absence": "confirmed account-wide",
+    "coverage": "qualified complete original/in-flight/latest issuance under protected actual policy maximum and actual policy-version history",
+    "provenance": "retained original occurrences and authorized absolute horizons; sound time joined to receiver stop/account-wide absence",
     "original_horizon": "sound covered upper bound reached under qualified time",
     "release_receipt": "none",
     "expect": "record lease expiry bound, never released; retain separate token and custody debt"
   },
   "counterexamples": [
+    {
+      "receiver_absence": "confirmed account-wide",
+      "coverage": "executor-only original-horizon report; schemas pass",
+      "expect": "retain unknown lease debt; executor evidence cannot replace actual-policy/all-issuance coverage; continue required stop"
+    },
+    {
+      "receiver_absence": "confirmed account-wide",
+      "coverage": "actual policy maximum and original issuance covered, but one in-flight or latest issuance uncovered",
+      "expect": "retain unknown lease debt despite worker absence and schema pass; refuse completion and continue required stop"
+    },
     {
       "worker": "killed before release",
       "receiver_absence": "confirmed account-wide",
