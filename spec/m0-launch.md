@@ -6,6 +6,8 @@ proposes one closed M0 subset under the `dispatcher-request/1` signing profile.
 Selected committed-start **A** follows the [landed receiver design][interlock];
 strict native-release **B** remains the direction for full acceptance. Selection
 is a design decision, not implementation, qualification or activation.
+The selected G2 security-classification branch B in §5 does not select strict
+native-start option B: committed-start A remains the M0 selection.
 Keymaker, Architect, broker and integration must review the exact candidate;
 curator and independent review precede runtime code. Owner acceptance is still
 required before protected operator installation or activation. Neither a valid
@@ -195,8 +197,10 @@ fence, receiver coverage/inventory and independent restore evidence are reconcil
 Neither a newer wall clock nor an internally consistent snapshot reopens it.
 Use main §3.4 qualified time, durable watermark and boot-inclusive monotonic
 elapsed checks; unknown time closes forward work and time-based reclamation.
-Revocation of association, epoch, plan/provenance, qualification or tuple also
-closes forward admission and initiates the same retained stop obligation.
+Invalidation of association, epoch, plan/provenance, qualification or tuple also
+closes forward admission and initiates the retained stop obligation. Planned policy removal/expiry
+and true tuple security revocation have the distinct dispositions in §5;
+ordinary invalidation ordering does not provide a security material fence.
 
 1. **Prepare.** Acquire external peer/generation/association/time/catalog/policy
    evidence outside the short dispatcher state lock. Re-read current protected
@@ -224,7 +228,7 @@ closes forward admission and initiates the same retained stop obligation.
    completed removal. Rv is that durable receiver boundary, not ACK, publication
    or file unlink. All removal/replacement paths participate. Unavailable receiver
    means pending removal with admission closed and debt retained, never completed
-   revocation or absence. Original removal intent/incident/detection and expiry
+   removal or absence. Original removal intent/incident/detection and expiry
    events and clocks survive contact failure, delayed Rv, ACK and publication;
    none may postpone an earlier deadline. An out-of-protocol file edit is an
    incident requiring detection and stop, never retrospective ordered Rv evidence.
@@ -327,24 +331,33 @@ observation/stop only. Lost or restored evidence cannot be classified as never l
 receiver's durable deduplication must ensure at most one child start under every
 crash cut; inability to establish that closes this receiver selection.
 
-## 5. P7, proposed M0 envelope and retained cleanup
+## 5. Planned policy removal, security response and retained cleanup
 
-Removal intent closes dispatcher admission immediately; durable Rv closes new C,
+### M0PolicyClassificationClockSecurityResponse
+
+Following the [landed first-run selection][manager] and [receiver design][interlock],
+**planned M0 launch-policy removal or expiry is not security revocation and is
+not an EIC-10-05 P7 trigger** (G2 branch B). Removal intent closes dispatcher admission immediately; durable Rv closes new C,
 and original expiry closes C locally. Each triggers durable account-generation-wide
 stop, retaining any C-winning original execution and every resumer. The
 **proposed M0 removal/expiry-to-absence envelope** is observation <=30 s plus fenced confirmed absence <=270 s, with
 `detect_seconds + stop_seconds <=300 s`, or shorter actual qualified bounds.
 Its original absolute deadline starts at the original authoritative removal
 intent/incident or original expiry, not delayed Rv/ACK/completed publication.
-Main P7 remains <=300 s from its original detection event; it is not renamed or restarted by this proposal. Retain both original events and absolute
-deadlines across retry/restart and enforce the earliest of original P7, the M0
+An independently already-outstanding real P7 remains <=300 s from its original
+detection event, or its shorter selected-profile bound; planned removal/expiry
+does not start that clock. Retain the separate original events and absolute
+deadlines across retry/restart and enforce the earliest of any outstanding original P7, the M0
 envelope, **detection +270 s component**, or any shorter applicable qualified
 deadline. Neither receipt arrival nor delayed polling may reset them. Detection includes watch/poll loss, time
 scheduling and restart; stop includes in-flight launch reconciliation, fencing
 further starts, all descendants and the receiver's quiet period/confirmation.
 The ordinary minute sweep alone proves no such bound. For removal at t=0 and
-original detection at t=20, P7 permits t=320, the M0 total t=300, but the
-detection +270 component requires **t=290**; any earlier outstanding P7/shorter qualified limit wins.
+original M0 detection at t=20, with no real P7 outstanding, the M0 total is t=300,
+but the detection +270 component requires **t=290**. An independently outstanding
+real P7 deadline at t=320 still leaves t=290; an earlier P7 deadline at t=280
+requires t=280. Completion at t=291 misses the t=290 component even though it
+meets the total t=300. A shorter qualified bound also wins.
 Detection <=30 s remains independently required. Restart, delayed receipt and
 C-to-exec/residual progress cannot reset any component or completion clock.
 
@@ -360,6 +373,25 @@ continues under its original authority and effect; unknown time does not delay
 an explicit authorized stop. Delivered vendor tokens retain their real lifetime;
 stopping processes does not retract credentials already issued.
 
+Planned removal/expiry leaves credential material issuance under the broker's
+own protected policy until worker stop. It supplies no NEW-lease interception,
+owner-intent broker field, new operation, mandatory immediate global Replace or
+automatic material/security fence. Existing broker security, cancellation and
+final currentness/material-release predicates remain mandatory; this classification
+grants no access beyond qualified original bounds. Lease release/expiry and
+delivered-token debt have separate dispositions below.
+
+**True EIC-10-05 tuple security revocation remains a closed gate for M0.**
+The canary claims no EIC-10-05 conformance. On an actual security event the
+operator stops the worker and uses the actual broker policy Replace operation.
+Issuance between detection and successful Replace commit is a named real window,
+not an immediate fence. Missing/failed Replace or stop retains unknown outcome,
+original effects, claim and cleanup debt; an attempted action is not successful
+cleanup. Automatic authoritative-event-to-final-material-fence joining is a
+post-M0 broker-owned contract and native qualification obligation. Owner risk
+acceptance of this canary limitation remains pending; technical selection grants
+no owner, root, install, signing or activation approval.
+
 Only fresh, receiver-owned **account-wide confirmed absence**, with generation,
 complete launch-history coverage, start/ingress fences and required quiet period,
 can release a live claim. Leader exit, PID disappearance, socket EOF, expired
@@ -368,6 +400,18 @@ generation still needs authoritative no-launch coverage and fenced absence;
 unknown history cannot use that disposition.
 
 ### Broker-v0 ownership, horizon and cleanup debt
+
+[Pre-B0 setup](m0-bootstrap-budget.md#5-pre-b0-setup-and-worker-status-boundary)
+is a separate one-time operator procedure: admission closed, no active leases
+anywhere on the broker, separately bounded setup time/currentness and exact
+worker/foreign-peer status evidence. No broker operation occurs in B0–B5.
+Emergency global Replace is an actual daemon capability: it invalidates
+old-generation leases and connections. Active-lease emergency use is distinct
+from the authorized no-active-lease setup procedure, and planned M0 removal/expiry
+does not require it. Replace does not supply delivered-token revocation or a
+successful old-generation release receipt; failed release cleanup retains its
+original debt. The setup prohibition is not a claim that the daemon rejects
+active-lease Replace. All original horizon (b) requirements below remain.
 
 [Broker v0][broker] §§2, 6–7 defines worker kernel-peer ownership. On normal
 teardown the worker confirms its private app-server descendants absent and
@@ -435,6 +479,7 @@ signer/receiver; a schema pass never attests authority.
 | A bounded handoff / late refusal | C before expiry, delayed S within qualified handoff/residual and every original deadline. | Missing interval/deadline refuses success while original effect/claim/debit/stop remain; no fresh child or retry launch. |
 | All-resumer closure | Original committed incarnation resolves under stop fences; confirmed whole-account absence prevents every later resume. | Recovery, generation/stop writer or second resumer bypasses C/Rv or resumes after absence: forbidden. |
 | Removal / original clocks | Journal/close admission, unlock, durable Rv plus stop, ACK, then completed publication. | Contact failure is pending; delayed Rv/ACK or out-of-protocol edit cannot assert completed removal/absence or move original deadlines; earliest component wins. |
+| M0PolicyClassificationClockSecurityResponse | Planned removal/expiry closes starts under A, retains original 30/270/300 components and any earlier outstanding P7/shorter deadline; material stays under broker policy, with separate lease/token debt. Real security event: operator stop plus broker Replace with an explicit detection-to-commit issuance window and closed EIC-10-05 gate. | False P7 trigger or later-P7 extension/reset, implicit material fence/NEW-lease hook, immediate security conformity, setup/emergency conflation or erased failed-release debt: forbidden. See the adjacent named inert groups. |
 | One launch/replay | One reserved dispatch; exact retry recovers original effect with current gates. | Concurrent/changed-body/new-ID/reinstalled-policy/crash replay cannot launch twice; unknown receipt retains claim and original effect. |
 | Recovery boundary | Sound owned cancel/recovery after launch authority closes, or independently authorized operator stop. | Reconciliation renews launch, old signature/association revives authority, cancel selects a foreign account, unknown time blocks required explicit stop: forbidden. |
 | Lease owner | Allowlisted worker requests and normally releases its own lease after teardown. | Dispatcher lease call or admitted foreign-owner release; no allowlist widening; foreign release is `lease_not_owner`. |
@@ -453,14 +498,14 @@ signer/receiver; a schema pass never attests authority.
 | User-manager/launcher + dispatcher | Selected launcher/FD3/exec-profile/start/stop/effect.observe intake and encoding, protected setup/creating-dispatcher association, receiver-owned durable original-execution C/Rv/expiry interlock under A, qualified C-to-exec-or-abort/residual intervals, all-resumer closure, one-launch replay, original-effect/account-wide absence and independently installed stop within every original P7/M0 component/completion deadline. Protected control/store/authentication/outcome, currentness/retention/restore/time and bounded lock integration remain unpublished/unqualified; B additionally retains strict native S/deadline composition. No launcher policy evaluator. Station `active` alone is insufficient. |
 | Executor/harness/catalog owners | Compatible one-shot executor intake and full typed immutable plan/profile/harness/exec-policy provenance/body/ownership, confinement, export/custody and finite evidence/result accounting. No arbitrary command or opaque enabled plan. |
 | Broker + integration | **Actual v0 activation**, worker-owned versioned lease adapter, exact worker-only allowlist UID mapping and broker's actual final credential/currentness predicates; only horizon (b), protected actual policy maximum with complete original/in-flight/latest issuance coverage, actual policy history, original occurrences/absolute horizons, sound time, receiver stop/account-wide absence and separate retained lease/token/custody debt. Executor evidence is corroborative only. No dispatcher broker observer or foreign release. All required broker activation audit rows remain, not just peer + runner; no copied credential fallback. |
-| Native qualification authority + all consumers | Exact Linux OS/kernel/architecture/hardware/firmware, boot/node/backend/image/profile, all service/harness/collector revisions, source/test/config, caller/worker UID-generation/association/epoch, units/users/groups/FDs/sandbox/mount/env/network tuple. Qualify the production entry and invalidation/P7, not support labels. Linux CI is not deployment; macOS stays native-gated. |
+| Native qualification authority + all consumers | Exact Linux OS/kernel/architecture/hardware/firmware, boot/node/backend/image/profile, all service/harness/collector revisions, source/test/config, caller/worker UID-generation/association/epoch, units/users/groups/FDs/sandbox/mount/env/network tuple. Qualify the production entry and original M0 stop clocks plus any independently outstanding P7, not support labels; true security revocation stays closed as stated in §5. Linux CI is not deployment; macOS stays native-gated. |
 | Keymaker, Architect, broker, integration; independent reviewer; curator | Review exact draft and subsequent implementation separately, preserve negative controls and exact evidence, then explicit owner acceptance before installation/activation. No consumer or independent acceptance is claimed here. |
 
 [ccj]: https://github.com/relux-works/swarma-registrar/blob/5f44ebf/spec/registrar.md#21-json-and-ccj-1-normative
 [codec]: https://github.com/relux-works/swarma-registrar/blob/5f44ebf/ccj/ccj.go
 [envelope]: https://github.com/relux-works/swarma-registrar/blob/5f44ebf/envelope/envelope.go
 [fixtures]: ../fixtures/m0-launch/README.md
-[manager]: https://github.com/relux-works/swarma-user-manager/blob/7b90a07/docs/design/first-run-launch-stop.md
+[manager]: https://github.com/relux-works/swarma-user-manager/blob/5db5b8bbeba8af7ed6962c87586ef48a0cd5b0b3/docs/design/first-run-launch-stop.md
 [broker]: https://github.com/relux-works/swarma-credential-broker/blob/8709e215a1b6bc7f42094a14e4a5620e2baed290/spec/v0-codex-refresher.md
 [counterexamples]: ../fixtures/m0-launch/counterexamples.md
-[interlock]: https://github.com/relux-works/swarma-user-manager/blob/e5a6ca608d5ecc92a36a8b8cd1f6a81340318abc/docs/design/m0-start-invalidation.md
+[interlock]: https://github.com/relux-works/swarma-user-manager/blob/5db5b8bbeba8af7ed6962c87586ef48a0cd5b0b3/docs/design/m0-start-invalidation.md

@@ -396,7 +396,7 @@ remain **PENDING**. B retains its separate strict native-release obligations.
   "counterexamples": [
     {
       "state": "receiver contact unavailable",
-      "expect": "pending removal, admission closed and debt retained; no completed revocation/absence"
+      "expect": "pending removal, admission closed and debt retained; no completed removal/absence"
     },
     {
       "state": "Rv/ACK/publication delayed",
@@ -410,25 +410,66 @@ remain **PENDING**. B retains its separate strict native-release obligations.
 }
 ```
 
+## M0 policy classification, clock and security response
+
+The single `M0PolicyClassificationClockSecurityResponse` surface in candidate §5
+groups the following adjacent documentary obligations with `m0-c-order`,
+`m0-a-delayed-s`, `m0-close-before-publish` and `killed-worker-horizon` above.
+The [landed manager selection][interlock] keeps committed-start A; G2 branch B
+classifies planned policy events and does not select strict native-start B.
+Runtime is **0 of 6 groups** below: there are no dispatcher production call sites
+for these obligations. All are NOT RUN/PENDING; finite document arithmetic and
+source comparison do not execute launch, broker, stop or security controls.
+
+### Planned event classification and selected start A
+
+```json
+{
+  "id": "m0-planned-classification",
+  "control": {
+    "event": "planned M0 launch-policy removal or expiry",
+    "order": "C before Rv/expiry; delayed S within qualified handoff/residual and original stop bounds",
+    "expect": "not security revocation; no P7 trigger; close new C via existing Rv/local expiry, retain original execution and every resumer as stop debt under selected A"
+  },
+  "counterexamples": [
+    {"claim": "planned expiry creates an EIC-10-05 P7 event at M0 detection", "expect": "forbidden false classification; retain original M0 event and components"},
+    {"claim": "G2 branch B selects strict native-start B", "expect": "forbidden; strict S remains separately gated, selected A remains"},
+    {"order": "Rv or expiry at/before C", "expect": "refuse C; no fresh execution or rearmed debit; adjacent m0-c-order retains exact equality rules"}
+  ]
+}
+```
+
 ### Earliest component and completion deadlines
 
 ```json
 {
   "id": "m0-earliest-deadline",
+  "adjacent_controls": [
+    {"outstanding_real_p7_deadline": 320, "stop_ceiling": 290, "expect": "independent later P7 cannot extend M0"},
+    {"outstanding_real_p7_deadline": 280, "stop_ceiling": 280, "expect": "earlier outstanding P7 wins"},
+    {"shorter_qualified_deadline": 279, "stop_ceiling": 279, "expect": "shorter qualified bound wins"},
+    {"stop_at": 290, "expect": "meets component ceiling at equality if all other gates hold; does not relax C/expiry equality refusal"}
+  ],
   "control": {
     "removal": 0,
     "detection": 20,
-    "p7_ceiling": 320,
+    "outstanding_real_p7_deadline": null,
     "detection_stop_ceiling": 290,
     "m0_total_ceiling": 300,
     "stop_ceiling": 290,
-    "expect": "stop including residual/reconciliation/quiet period by 290 or any earlier original P7/shorter qualified deadline; detection <=30 independently"
+    "expect": "no P7 trigger; stop including residual/reconciliation/quiet period by 290; detection <=30 independently; no retry/restart/Rv/ACK/receipt reset"
   },
   "counterexamples": [
     {
       "stop_at": 291,
-      "claim": "within M0 total 300 and P7 320 so compliant",
+      "claim": "within M0 total 300 so compliant",
       "expect": "refuse compliance; detection+270 was missed; keep stop/debt"
+    },
+    {
+      "outstanding_real_p7_deadline": 320,
+      "stop_at": 300,
+      "claim": "later P7 permits extending the M0 component",
+      "expect": "refuse compliance; original M0 component still requires 290"
     },
     {
       "earlier_original_deadline": 280,
@@ -448,4 +489,87 @@ remain **PENDING**. B retains its separate strict native-release obligations.
 }
 ```
 
-[interlock]: https://github.com/relux-works/swarma-user-manager/blob/e5a6ca608d5ecc92a36a8b8cd1f6a81340318abc/docs/design/m0-start-invalidation.md
+### Broker material, lease and token separation
+
+```json
+{
+  "id": "m0-broker-material-separation",
+  "control": {
+    "event": "planned removal/expiry; worker stopping within original bounds",
+    "expect": "material remains under broker protected policy until worker stop; existing security/cancel/final-currentness predicates still apply; no access beyond qualified original bounds; lease and delivered-token debts tracked separately"
+  },
+  "counterexamples": [
+    {"claim": "policy expiry itself immediately fences broker material", "expect": "forbidden implicit material fence; launch closure is not broker policy replacement"},
+    {"claim": "every planned removal requires a NEW-lease interception hook or owner-intent broker field", "expect": "forbidden unpublished hook/field; no new broker operation supplied"},
+    {"claim": "planned removal mandates immediate global Replace", "expect": "forbidden requirement; preserve broker protected-policy issuance and original stop envelope"},
+    {"claim": "branch B bypasses existing security/cancel/currentness checks", "expect": "forbidden weakening; actual broker final-release protections remain"}
+  ]
+}
+```
+
+### Actual security event and manual response window
+
+```json
+{
+  "id": "m0-security-response-window",
+  "control": {
+    "event": "actual EIC-10-05 tuple security revocation",
+    "response": "operator stops worker and commits actual broker policy Replace",
+    "expect": "closed M0 gate; no EIC-10-05 conformance; issuance between detection and successful Replace commit is a named real window, not an immediate fence; owner risk acceptance pending; automatic event-to-final-material-fence is post-M0 broker-owned contract/native qualification"
+  },
+  "counterexamples": [
+    {"claim": "detection or operator stop intent immediately fences material and proves EIC-10-05", "expect": "forbidden immediate security conformity; detection-to-Replace window remains"},
+    {"state": "Replace missing or failed; worker stop attempted/unknown", "expect": "retain original effects, claim, stop and cleanup debt; no successful fence, absence or cleanup"},
+    {"claim": "technical classification supplies owner risk, root, signing, installation or activation approval", "expect": "forbidden authority inference; all relevant gates remain pending"}
+  ]
+}
+```
+
+### Pre-B0 setup versus emergency active-lease Replace
+
+```json
+{
+  "id": "m0-setup-emergency-separation",
+  "control": {
+    "phase": "separate pre-B0 operator setup",
+    "state": "admission closed; no active leases anywhere on broker",
+    "evidence": "separate bounded setup time/currentness; exact worker status generation/account without payload; adjacent foreign UID empty/denied",
+    "expect": "eligible setup only when every setup gate holds; no broker operations B0-B5"
+  },
+  "adjacent_control": {
+    "phase": "actual security emergency with active leases",
+    "response": "operator stop plus global broker Replace",
+    "expect": "daemon capability invalidates old-generation leases/connections; explicitly emergency, not authorized no-active-lease setup or token revocation; real issuance window and remaining debt retained"
+  },
+  "counterexamples": [
+    {"state": "active leases at Replace", "claim": "safe pre-B0 setup", "expect": "cannot satisfy setup; emergency capability does not authorize setup"},
+    {"claim": "daemon rejects every active-lease Replace", "expect": "false capability claim; operator setup prohibition is not daemon rejection"},
+    {"phase": "B0-B5", "action": "reload, status, confirmation or lease.request", "expect": "forbidden broker operation in B0-B5; retained qualified setup evidence only"},
+    {"action": "lease.request as read-only setup probe", "expect": "forbidden; issues real token debt, not status evidence"},
+    {"evidence": "no-error reload, wrong generation/account or missing setup bound", "expect": "cannot satisfy setup; retain uncertainty"}
+  ]
+}
+```
+
+### Failed old-generation cleanup retains original debt
+
+```json
+{
+  "id": "m0-replace-cleanup-debt",
+  "control": {
+    "state": "successful Replace invalidates old-generation lease/connection; worker release cleanup failed",
+    "expect": "record actual invalidation separately; retain failed original release, stop/absence and token/custody debt; horizon (b) still requires complete original/in-flight/latest issuance, protected policy history, original absolute horizons and sound time; no synthetic release receipt"
+  },
+  "adjacent_control": {
+    "state": "same-owner normal release durably acknowledged after confirmed private-descendant teardown",
+    "expect": "record actual release only for its corresponding lease; delivered tokens retain independent lifetime; account-wide absence remains separately required"
+  },
+  "counterexamples": [
+    {"claim": "Replace or lease expiry converts failed release into successful cleanup", "expect": "forbidden lost original debt; invalidation/expiry is not release"},
+    {"claim": "release or Replace revokes an already delivered vendor token", "expect": "forbidden token-revocation claim; separate token debt retained"},
+    {"state": "worker absent but in-flight/latest issuance or policy history uncovered", "expect": "retain unknown lease debt under original horizon (b); no guessed horizon or executor-only substitute"}
+  ]
+}
+```
+
+[interlock]: https://github.com/relux-works/swarma-user-manager/blob/5db5b8bbeba8af7ed6962c87586ef48a0cd5b0b3/docs/design/m0-start-invalidation.md
