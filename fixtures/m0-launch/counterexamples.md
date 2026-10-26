@@ -128,21 +128,27 @@ admission earlier. No real broker refusal is measured here.
 
 ## Selected importing custody and separate old-instance fence
 
-These hypothetical facts describe only Keymaker bootstrap/custody and broker
-time/D5 importing scopes in candidate §1. Common infrastructure preserves each
-consumer's own histories, enrollment, identities, installation, namespace,
-credentials and original occurrences. All provider/placement, typed protocol,
-complete-original/currentness/continuity, endpoint/load and native gates remain
-PENDING. Ordinary manager create/retire/launch/stop is outside this consuming
-scope; later PC2 MC-Q5/A3d-2 requires separate publication and qualification.
+These hypothetical facts describe separate Keymaker bootstrap/custody, broker
+time settlement (W/hold/in-flight) and broker D5 (acknowledged store head/start
+fence) importing scopes in candidate §1. The two broker scopes have separate
+histories, enrollment, identities, installation bindings, namespaces, credentials,
+original occurrences and independently operator-approved first checkpoint/genesis.
+Common WC1/G17 infrastructure merges none of these; neither broker scope can
+substitute for the other. Missing or mismatched genesis cannot be repaired by
+automatic re-enrollment, first-seen adoption or the other scope's history.
+All provider/placement, typed protocol, complete-original/currentness/continuity,
+endpoint/load and native gates remain PENDING. Ordinary manager
+create/retire/launch/stop is outside this consuming scope; later PC2 MC-Q5/A3d-2
+requires separate publication and qualification. These are inert hypothetical
+facts, not wire/profile members or an executable control grammar.
 
 ```json
 {
   "id": "m0-selected-custody",
   "control": {
-    "scope": "actual Keymaker or broker time/D5 importing scope",
+    "scope": "one actual importing scope: Keymaker bootstrap/custody, broker time settlement, or broker D5 (the broker scopes are separate)",
     "custody": "required WC1 plus common synchronous independent G17",
-    "history": "complete originals and currentness/continuity for this consumer's own enrollment, identities, installation, namespace and credentials",
+    "history": "complete originals and currentness/continuity for this scope's own history, enrollment, identities, installation binding, namespace, credentials, original occurrences and independently operator-approved first checkpoint/genesis",
     "fence": "separate lifetime exclusion of restored/prepared/old-instance effects, writes, signing and releases",
     "expect": "only eligible when every owning provider/protocol/native gate is qualified; no runtime authority asserted"
   },
@@ -159,6 +165,38 @@ scope; later PC2 MC-Q5/A3d-2 requires separate publication and qualification.
       "custody": "qualified WC1/common synchronous independent G17",
       "fence": "missing separate old-instance lifetime exclusion",
       "expect": "remain closed; custody alone cannot exclude restored/prepared/old-instance effects"
+    },
+    {
+      "history": "broker D5 history substituted for broker time settlement history",
+      "expect": "refuse cross-scope import before effects, writes, signing or releases; retain recovery debt even when the other scope is qualified"
+    },
+    {
+      "history": "broker time settlement history substituted for broker D5 history",
+      "expect": "refuse cross-scope import before effects, writes, signing or releases; retain recovery debt even when the other scope is qualified"
+    },
+    {
+      "genesis": "missing or mismatched independently approved genesis",
+      "expect": "refuse import before effects, writes, signing or releases; retain recovery debt; no automatic re-enrollment or first-seen adoption or other-scope substitution"
+    },
+    {
+      "genesis": "shared genesis across broker time settlement and broker D5",
+      "expect": "refuse import before effects, writes, signing or releases; retain recovery debt; no automatic re-enrollment or first-seen adoption or other-scope substitution"
+    }
+  ],
+  "scope_controls": [
+    {
+      "scope": "broker time settlement",
+      "history": "own history, own enrollment, own identities, own installation binding, own namespace, own credentials, own original occurrences and independently operator-approved first checkpoint/genesis; no other scope substitution",
+      "custody": "required WC1 plus common synchronous independent G17",
+      "fence": "separate lifetime exclusion of restored/prepared/old-instance effects, writes, signing and releases",
+      "expect": "only eligible when every owning provider/protocol/native gate is qualified; no runtime authority asserted"
+    },
+    {
+      "scope": "broker D5",
+      "history": "own history, own enrollment, own identities, own installation binding, own namespace, own credentials, own original occurrences and independently operator-approved first checkpoint/genesis; no other scope substitution",
+      "custody": "required WC1 plus common synchronous independent G17",
+      "fence": "separate lifetime exclusion of restored/prepared/old-instance effects, writes, signing and releases",
+      "expect": "only eligible when every owning provider/protocol/native gate is qualified; no runtime authority asserted"
     }
   ]
 }
