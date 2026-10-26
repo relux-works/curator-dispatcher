@@ -17,6 +17,11 @@ A separate [DRAFT M0 existing-worker candidate](spec/m0-launch.md) proposes one 
 
 Purpose-6 station-caller custody and protected dispatcher association supersede the historical home-generated/operator-enrolled bootstrap path. Purpose allocation, protected typed plans, both signing adapters, association/proof/replay/rotation and exact native qualification remain gates for **all** station-caller paths, including operator-enrolled bootstrap and recursive delegation. Private keys stay in Keymaker; the separate operator service root retains its own authority. Registry federation/publication is not required for the non-federated worker target, and purpose-2 registrar enrollment cannot enroll purpose 6. See [caller gates](spec/dispatcher.md#33-caller-keys-and-request-signatures), [contract counterexamples](spec/dispatcher.md#151-bounded-documentation-contract-counterexamples) and the [unresolved index](UNRESOLVED_QUESTIONS.md), which points to §16.
 
+A [dispatcher bootstrap-budget contribution](spec/m0-bootstrap-budget.md) proposes
+finite endpoint/load ceilings against pinned Keymaker B0–B5. The complete joint
+workload and separate pre-B0 worker-status setup budget remain unqualified;
+consumer/independent review and owner acceptance precede implementation.
+
 ## Principles
 
 - The dispatcher runs under its own unprivileged service account; root stays in the helper and the launcher.
