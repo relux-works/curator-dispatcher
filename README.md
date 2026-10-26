@@ -22,7 +22,13 @@ finite endpoint/load ceilings against pinned Keymaker B0–B5. The complete join
 workload and separate pre-B0 worker-status setup budget remain unqualified;
 consumer/independent review and owner acceptance precede implementation.
 
-A separate [DRAFT closed executor-entry proposal](spec/m0-executor-entry.md) defines one finite FD3 input and deterministic existing `run-codex` argv/UTF-8 stdin mapping, with [inert specimens](fixtures/m0-executor-entry/README.md). Exact owning selection, typed catalog/installation, native qualification and authenticated Result joins remain gates; no adapter runtime is supplied.
+A separate [DRAFT closed executor-entry proposal](spec/m0-executor-entry.md)
+defines one finite FD3 input and deterministic existing `run-codex` argv/UTF-8
+stdin mapping, with [inert specimens](fixtures/m0-executor-entry/README.md).
+D-side protected equality, bound deadline/slack and direct native exec with a
+bounded feeder are proposed only. PATH narrowing and adapter refusal status 78
+await owning selection. Typed catalog/installation, native qualification and
+authenticated Result joins remain gates; no adapter runtime is supplied.
 
 ## Principles
 

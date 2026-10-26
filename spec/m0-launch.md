@@ -107,15 +107,15 @@ is enabled here and no `hello` or `method` member is imported into a request.
 Keymaker resolves the protected typed signing plan referenced by
 `sign_station_caller {profile,plan_id}`, independently validates its full body,
 digest, authenticated origin, current authority and receiver, constructs R and
-its preimage itself, and returns `{key,sig}`. The adapter independently resolves
-the same validated values, assembles matching R and inserts auth without changing
-R. It does not submit a free-form body for signing. The dispatcher independently
+its preimage itself, and returns `{key,sig}`. The dispatcher signing adapter
+independently resolves the same validated values, assembles matching R and
+inserts auth without changing R. It does not submit a free-form body for signing. The dispatcher independently
 validates the same schema, catalog provenance and protected authority source.
 The worker-plan/executor intake, exec-profile, catalog provenance/install and
 receiver-internal encodings must be fully published and jointly selected before
 use. A reference is not permission to admit an unpublished body as opaque bytes.
 
-The [DRAFT executor-entry /1 proposal](m0-executor-entry.md) separately specifies a closed finite FD3 input and deterministic existing runner mapping. It remains pending owning selection and does not enable opaque plan bodies or settle Result authority.
+The [DRAFT executor-entry /1 proposal](m0-executor-entry.md) separately specifies a closed finite FD3 input and deterministic existing runner mapping. It remains pending owning selection and does not enable opaque plan bodies or settle Result authority. Protected equality belongs to D before handoff; bound timing, proposed PATH narrowing and native exec/feeder/status attribution remain owning selection and qualification gates.
 
 Use registrar [CCJ-1 §2.1 at 5f44ebf][ccj], with its public [ccj][codec] and
 [envelope][envelope] boundaries, **not Keymaker native JSON spelling**. Reject

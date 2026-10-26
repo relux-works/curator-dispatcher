@@ -1,58 +1,100 @@
 # DRAFT executor-entry documentary specimens
 
-The [closed proposal](../../spec/m0-executor-entry.md) is the authority for this
-inert family. `entry.specimen.json` is a complete shape-positive specimen, **not**
-authenticated or qualified authority: synthetic catalog/model/effort, identities
-and pin values grant nothing. Its worker_plan hash selects CCJ-1(input); the
-other synthetic pins deliberately do not claim published upstream bodies.
-Protected originals matching the specimen are a required hypothetical positive
-control, never supplied by the specimen itself.
+The [closed proposal](../../spec/m0-executor-entry.md) governs this inert family.
+`entry.specimen.json` is shape-positive, **not** authenticated or qualified
+execution authority. Synthetic identities, catalog/model/effort and pins grant
+nothing. Matching independently authenticated durable originals and a complete
+current protected tuple are hypothetical controls, never supplied by these files.
+Production coverage remains **0/8**; no runtime, build, project test, native
+execution, probe, rename or product validator was run or supplied.
 
-`forbidden-controls.json` enumerates bounded edits/environment substitutions.
-Each control starts from the positive specimen and otherwise identical matching
-protected originals; unchanged control is the positive neighbor. Lexical changes
-apply to raw JSON bytes before parsing. Identity/catalog changes keep protected
-originals fixed. Native substitutions require an actually qualified tuple; no
-native control was run. These are vectors for review, not executable tests or a
-validator implementation. Duplicate/invalid-byte cases are descriptions so an
-ordinary JSON loader cannot silently turn them into misleading valid fixtures.
+Dispatcher D performs protected equality once before handoff, including original
+request/effect/claim/execution, current policy/association/registration/epochs,
+full catalog/profile/qualification/installation and timing provenance. The four
+bounded snapshots and metadata budget belong to D. Manager admits immutable FD3
+by its already-bound entry digest; worker adapter carries an audit copy and
+performs no protected path/IPC/extra-handle read. Immutable installed E/H and
+clock-profile inputs must be bound to the exact finite published/qualified tuple.
+Those publication/currentness and full typed authority joins remain OPEN.
 
-Additional positive boundaries: prompt LF preserved exactly with EOF; a 24576
-ASCII-byte prompt fits only if total encoded/canonical bounds still fit; integer
-T=1 with >=1 s remaining after qualified slack is admissible in shape; D=290,
-now=20,S=10 gives T=240. Paired negatives: added LF, 24577-byte prompt, escape
-expansion over49152 bytes, T=0 or fractional rounding, missing slack qualification.
-The named eight groups and production0/8 coverage are in the proposal. No schema,
-product parser, runtime, build, project test or native execution is supplied.
-Bounded local file/diff/hash/link/arithmetic checks provide documentary evidence
-only. A valid JSON load is not a conformance verdict for these controls.
+Entry now has **9 closed objects / 43 members**, including the two-integer Timing
+object: absolute `deadline_ms` and positive duration `slack_ms`, each
+1..9007199254740991 milliseconds. Exact qualified tuple selection must establish
+the common clock coordinate, original-deadline conversion/equality, conservative
+representation, confidence/currentness and finite syscall/stop/slack bounds.
+The adapter obtains only `now_ms` from that qualified clock; no worker timing
+choice, protected lookup or retry reset. This proposed format supplies no real
+clock mechanism or universal clock constant.
 
-`mapping.witness.json` supplies concrete synthetic protected path values, exact
-19-element argv, stdin byte length/hash and content identities for this ASCII
-specimen. These paths are inert examples, never selected installation locations.
-PATH(b) is selected content: vendor PATH `/usr/bin:/bin`, with unchanged helper
-environment at the adapter/runner boundary. A qualified native adapter and native
-Codex, the complete R-EXEC allowlist/invocation qualification, and FD3-left-open
-observation remain PENDING. Track the plan object and every duplicate by kernel
-identity, never a descriptor number: broker-created descriptors can reuse 3.
-Runner currently does not reject inherited plan handles. The separate current
-broker agent-executable handle inheritance/re-exec issue requires an owning fix
-and native trace before M0; no path-allowlist shortcut or blanket internal-FD
-exemption is claimed. Environment conformance and OS exec refusal are separate.
+`mapping.witness.json` records immutable synthetic path examples, unchanged
+19-element argv (392 bytes including NULs), exact 28-byte stdin then EOF, and
+content identities for the ASCII specimen. CCJ-1(input) is unchanged at 186 bytes,
+so worker_plan is unchanged. Adding bound timing changes CCJ-1(entry) from 1445
+to 1494 bytes and its entry digest; the specimen has 173 lexical tokens, below
+the unchanged 512 ceiling. The mapping records the exact new hash. Pretty JSON
+bytes are not canonical identity. Synthetic D=290000 ms, now=20000 ms, S=10000 ms
+gives T=240. A 1000 ms remainder gives T=1; 900 ms refuses, never rounds upward.
+Prompt LF is preserved exactly; a 24576-byte prompt fits only if whole encoded/
+canonical bounds still fit. Added LF, 24577 bytes, escape expansion over 49152
+bytes, missing/tampered D/S or unqualified clock are negative neighbors.
 
-`boundary.witnesses.json` records inert qualification-order and publication
-expectations at the pinned broker source boundary. Readable protected root/lock
-and no in-progress/pending-activation markers allow Observe (Version first) before qualified.json;
-absent/malformed records do not prove no earlier measurement. Successful protected
-qualification is the conditional positive neighbor for the later runner
-versionProbe, not an execution authorization here.
+Published [D-PATH](../../spec/dispatcher.md#53-execution) and the
+[pinned manager helper](https://github.com/relux-works/swarma-user-manager/blob/5db5b8bbeba8af7ed6962c87586ef48a0cd5b0b3/spec/helper.md#L481)
+include protected tool and dispatcher wrapper directories around the admitted
+user base PATH. Vendor `/usr/bin:/bin` is only a **proposed M0 narrowing pending
+owner selection**, excluding those protected directories. It is distinct from
+the unchanged helper bootstrap environment. No adapter PATH rewrite, broker flag,
+R-EXEC permission or kernel PATH enforcement is claimed.
 
-Publication witnesses pair old O and previously absent O for known prepublication
-failure, observed successful publication, and successful rename with completion
-unobserved by D. Rename replaces/creates O and fixes runner terminal0 even with a
-later stop; lost completion observation retains original publication/Result/effect
-debt and unknown cleanup debt. Existing bytes/mode0600 authorize no D read or
-consumption, D success/failure disposition or new admission. The forbidden
-controls reject both the no-measurement inference and unknown-preserves-old-output
-inference. None of these documents executes a probe, rename or validator; native
-qualification, typed authority and Result selection remain open, production0/8.
+`boundary.witnesses.json` pairs known pre-exec refusal 78, successful exec with
+runner-owned 0/69, known failed exec and unknown exec/feeder/status observations.
+The native adapter directly execve-replaces itself with the pinned command;
+there is no surviving adapter supervisor. Close FD3's kernel object and every
+duplicate before feeder creation. Both runner and feeder must lack that object;
+only 0–2 reach runner. Feeder owns one bounded prompt copy/pipe write end and
+immutable qualified timing inputs, closes unrelated inherited descriptors, and
+never causes adapter to wait for pipe drain before exec. Finite cancellation,
+join/reaping and disposal remain UNQUALIFIED, including independent original
+fate/stop ownership after exec and whole-account absence. No second prompt/start
+or lease replay is permitted after unknown effect.
+
+Status 78 is a proposed reserved adapter pre-exec refusal, pending owning review,
+disjoint from pinned runner statuses 0, 1, 64, 69, 75, 124, 130. Only trustworthy
+original fate evidence binding actor/process/artifact/execution/generation,
+exclusive pre-exec phase, no runner start and completed feeder cleanup could
+support that attribution. The mechanism is unsupported here. Numeric 78 alone,
+collision, mixed/raw signal or lost observation means UNKNOWN completion and
+retains all original publication/Result/effect/cleanup/lease/token/stop debt.
+Successful exec becomes runner with unchanged statuses. No status grants Result,
+read, absence, release, debt discharge or fresh admission authority.
+
+The original qualification-order witnesses remain: readable protected root/lock
+with no in-progress/pending-activation permits Observe (Version first) before
+qualified.json. Absent/malformed records do not prove no measurement. Successful
+protected qualification is only the conditional neighbor for later versionProbe;
+refusal 69 admits no lease/app-server. No probe is authorized here.
+
+Publication witnesses retain old O and absent O neighbors for known failure
+before publication, observed success, and rename succeeded/completion unobserved.
+Rename replaces/creates O and fixes runner terminal 0 despite later stop; D's
+observation/disposition is separate. Unknown retains original publication/Result/
+effect and cleanup debt. Bytes/mode 0600 grant no read/consumption, disposition
+or fresh admission. No Result protocol, ACL, quota or wipe authority is added.
+
+`forbidden-controls.json` preserves the original 42 controls and the two qualification/publication
+additions in relative order, with nine additional controls (53 total). Descriptive spacing and
+actor-specific expectations were revised; these strings are not preserved-byte
+claims. Each control has the unchanged matching hypothetical control as neighbor;
+lexical changes apply to raw bytes, protected identity changes hold originals
+fixed. Native substitutions require a qualified tuple, never supplied here.
+These are review vectors, not executable tests: valid JSON is no conformance
+verdict. Local static JSON/hash/arithmetic/link/diff checks and bounded instrument
+plants provide documentary consistency evidence only.
+
+Selected A still requires receiver C before ANY adapter/loader/constructor code.
+Native/no-shebang, FD kernel-object/all-copy isolation, full per-tool R-EXEC
+invocation and writable-code/agent-reexec gates remain OPEN. The current broker
+agent executable handle inheritance/re-exec issue requires an owning fix and
+native trace. PATH or a path allowlist is no shortcut; broker-owned descriptors
+may reuse number 3, which alone is no plan leak or evidence of safety. Original
+clocks/replay/stop and all Result/debt/retention/restore joins remain unchanged.
