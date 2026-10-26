@@ -1,0 +1,42 @@
+{
+  "v": 1,
+  "kind": "swarma-dispatcher m0-policy/1",
+  "id": "dddddddddddddddddddddddddddddddd",
+  "revision": 1,
+  "receiver": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "association": {
+    "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "revision": 1,
+    "uid": 30001,
+    "generation": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "key": "ed25519:11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+    "registration_number": 1,
+    "master_epoch": 1
+  },
+  "worker": {
+    "uid": 30002,
+    "generation": "cccccccccccccccccccccccccccccccc"
+  },
+  "plan": {
+    "worker_plan": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "profile": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "harness": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "exec_profile": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "catalog": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+  "qualification": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+  "operations": [
+    "dispatch",
+    "cancel"
+  ],
+  "limits": {
+    "max_workers": 1,
+    "max_physical_starts": 1,
+    "max_runtime_seconds": 3600,
+    "detect_seconds": 30,
+    "stop_seconds": 270
+  },
+  "not_before": 1792972800,
+  "not_after": 1792976400,
+  "enabled": true
+}

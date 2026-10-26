@@ -1,0 +1,340 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DRAFT swarma-dispatcher M0 request/1",
+  "description": "Proposed closed existing-worker dispatch and owned-run cancel only. Shape validation is not canonical parsing, signature verification, current policy authority, receiver selection or activation. See spec/m0-launch.md. No grant-bearing request is relaxed.",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}(?![\\s\\S])"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "serial": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "key": {
+      "type": "string",
+      "pattern": "^ed25519:[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048](?![\\s\\S])"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{85}[AQgw](?![\\s\\S])"
+    },
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uid",
+        "generation"
+      ],
+      "properties": {
+        "uid": {
+          "type": "integer",
+          "minimum": 30000,
+          "maximum": 59999
+        },
+        "generation": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "association": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision",
+        "uid",
+        "generation",
+        "key",
+        "registration_number",
+        "master_epoch"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "$ref": "#/$defs/serial"
+        },
+        "uid": {
+          "type": "integer",
+          "minimum": 30000,
+          "maximum": 59999
+        },
+        "generation": {
+          "$ref": "#/$defs/id"
+        },
+        "key": {
+          "$ref": "#/$defs/key"
+        },
+        "registration_number": {
+          "$ref": "#/$defs/serial"
+        },
+        "master_epoch": {
+          "$ref": "#/$defs/serial"
+        }
+      }
+    },
+    "policyPin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "$ref": "#/$defs/serial"
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "worker_plan",
+        "profile",
+        "harness",
+        "exec_profile"
+      ],
+      "properties": {
+        "worker_plan": {
+          "$ref": "#/$defs/digest"
+        },
+        "profile": {
+          "$ref": "#/$defs/digest"
+        },
+        "harness": {
+          "$ref": "#/$defs/digest"
+        },
+        "exec_profile": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "sig"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/key"
+        },
+        "sig": {
+          "$ref": "#/$defs/signature"
+        }
+      }
+    },
+    "unsignedDispatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "v",
+        "kind",
+        "request_id",
+        "receiver",
+        "policy",
+        "association",
+        "worker",
+        "plan",
+        "op"
+      ],
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "kind": {
+          "const": "swarma-dispatcher m0-request/1"
+        },
+        "request_id": {
+          "$ref": "#/$defs/id"
+        },
+        "receiver": {
+          "$ref": "#/$defs/id"
+        },
+        "policy": {
+          "$ref": "#/$defs/policyPin"
+        },
+        "association": {
+          "$ref": "#/$defs/association"
+        },
+        "worker": {
+          "$ref": "#/$defs/worker"
+        },
+        "plan": {
+          "$ref": "#/$defs/plan"
+        },
+        "op": {
+          "const": "dispatch"
+        }
+      }
+    },
+    "signedDispatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "v",
+        "kind",
+        "request_id",
+        "receiver",
+        "policy",
+        "association",
+        "worker",
+        "plan",
+        "op",
+        "auth"
+      ],
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "kind": {
+          "const": "swarma-dispatcher m0-request/1"
+        },
+        "request_id": {
+          "$ref": "#/$defs/id"
+        },
+        "receiver": {
+          "$ref": "#/$defs/id"
+        },
+        "policy": {
+          "$ref": "#/$defs/policyPin"
+        },
+        "association": {
+          "$ref": "#/$defs/association"
+        },
+        "worker": {
+          "$ref": "#/$defs/worker"
+        },
+        "plan": {
+          "$ref": "#/$defs/plan"
+        },
+        "op": {
+          "const": "dispatch"
+        },
+        "auth": {
+          "$ref": "#/$defs/auth"
+        }
+      }
+    },
+    "unsignedCancel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "v",
+        "kind",
+        "request_id",
+        "receiver",
+        "policy",
+        "association",
+        "worker",
+        "plan",
+        "op",
+        "dispatch_request_id"
+      ],
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "kind": {
+          "const": "swarma-dispatcher m0-request/1"
+        },
+        "request_id": {
+          "$ref": "#/$defs/id"
+        },
+        "receiver": {
+          "$ref": "#/$defs/id"
+        },
+        "policy": {
+          "$ref": "#/$defs/policyPin"
+        },
+        "association": {
+          "$ref": "#/$defs/association"
+        },
+        "worker": {
+          "$ref": "#/$defs/worker"
+        },
+        "plan": {
+          "$ref": "#/$defs/plan"
+        },
+        "op": {
+          "const": "cancel"
+        },
+        "dispatch_request_id": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "signedCancel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "v",
+        "kind",
+        "request_id",
+        "receiver",
+        "policy",
+        "association",
+        "worker",
+        "plan",
+        "op",
+        "dispatch_request_id",
+        "auth"
+      ],
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "kind": {
+          "const": "swarma-dispatcher m0-request/1"
+        },
+        "request_id": {
+          "$ref": "#/$defs/id"
+        },
+        "receiver": {
+          "$ref": "#/$defs/id"
+        },
+        "policy": {
+          "$ref": "#/$defs/policyPin"
+        },
+        "association": {
+          "$ref": "#/$defs/association"
+        },
+        "worker": {
+          "$ref": "#/$defs/worker"
+        },
+        "plan": {
+          "$ref": "#/$defs/plan"
+        },
+        "op": {
+          "const": "cancel"
+        },
+        "dispatch_request_id": {
+          "$ref": "#/$defs/id"
+        },
+        "auth": {
+          "$ref": "#/$defs/auth"
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/signedDispatch"
+    },
+    {
+      "$ref": "#/$defs/signedCancel"
+    }
+  ]
+}

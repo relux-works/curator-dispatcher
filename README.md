@@ -11,7 +11,9 @@ The one-shot executor is `curator-run` from `curator-agent-launcher`, in a versi
 
 **Status: design in progress.** Nothing is implemented yet. The specification (the `swarma-dispatcher` Unix-socket service on `dispatch/1` from slice 0; later queueing, events, long waits and integrations behind capability gates on the same core and transport) is [`spec/dispatcher.md`](spec/dispatcher.md); diagrams are in [`diagrams/`](diagrams/).
 
-The specification describes the full launch design. Current dependency subsets do not make it available: user-manager station v0 excludes launcher, general list, `effect.observe` and `exec.stop`, with operator-only per-act export-waiver retirement; broker standalone v0 uses a static operator UID allowlist without signed grants/delegation/revocation/bindings or dispatcher integration. An `active` station account is not launchable. The [minimal non-federated full protected-launch target](spec/dispatcher.md#21-full-protected-launch-target-and-dependency-gates) names the missing joins and owners; it does not select the immediate milestone. A proposed reduced launch/lease milestone using v0 credential leasing remains separately unavailable without an explicit owner-approved, jointly published and qualified limited caller launch-authority/currentness policy or real broker slice-0 grant/revocation integration. The policy is unresolved; full target grant/freshness/binding gates remain intact. Linux is first in work order; macOS parity requires native qualification before activation. No unqualified platform or standalone allowlist opens dispatcher admission.
+The specification describes the full launch design. Current dependency subsets do not make it available: user-manager station v0 excludes launcher, general list, `effect.observe` and `exec.stop`, with operator-only per-act export-waiver retirement; broker standalone v0 uses a static operator UID allowlist without signed grants/delegation/revocation/bindings or dispatcher integration. An `active` station account is not launchable. The [minimal non-federated full protected-launch target](spec/dispatcher.md#21-full-protected-launch-target-and-dependency-gates) names the missing joins and owners; it does not select the immediate milestone. A proposed reduced launch/lease milestone using v0 credential leasing remains separately unavailable without an explicit owner-approved, jointly published and qualified limited caller launch-authority/currentness policy or real broker slice-0 grant/revocation integration. The policy remains unaccepted; full target grant/freshness/binding gates remain intact. Linux is first in work order; macOS parity requires native qualification before activation. No unqualified platform or standalone allowlist opens dispatcher admission.
+
+A separate [DRAFT M0 existing-worker candidate](spec/m0-launch.md) proposes one protected limited policy, closed dispatch/owned-cancel forms, durable one-launch replay and P7 stop obligations using activated broker-v0 leasing without binding. Its [schemas and synthetic fixtures](fixtures/m0-launch/README.md) are for joint review; authority installation, receiver selection, first-caller/bootstrap, exact tuple qualification and owner activation remain closed. The full grant-bearing design is unchanged.
 
 Purpose-6 station-caller custody and protected dispatcher association supersede the historical home-generated/operator-enrolled bootstrap path. Purpose allocation, protected typed plans, both signing adapters, association/proof/replay/rotation and exact native qualification remain gates for **all** station-caller paths, including operator-enrolled bootstrap and recursive delegation. Private keys stay in Keymaker; the separate operator service root retains its own authority. Registry federation/publication is not required for the non-federated worker target, and purpose-2 registrar enrollment cannot enroll purpose 6. See [caller gates](spec/dispatcher.md#33-caller-keys-and-request-signatures), [contract counterexamples](spec/dispatcher.md#151-bounded-documentation-contract-counterexamples) and the [unresolved index](UNRESOLVED_QUESTIONS.md), which points to §16.
 
@@ -128,6 +130,32 @@ Documentation inspection uses these additional entrypoints within this toolset:
 - Python 3 standard library: `python3 -` runs bounded checks supplied on stdin for local Markdown targets/heading anchors, table structure and public-diff hygiene.
 
 These documentation checks do not qualify a service or activate an API; they are not project builds or tests. Output goes to stdout; private inspection scripts, logs and evidence belong under `.temp/`.
+
+For the [M0 DRAFT fixtures](fixtures/m0-launch/README.md), the same pinned
+`jsonschema` version checks shapes without running worker code:
+
+```sh
+python3 - <<'PY'
+import json
+from pathlib import Path
+from jsonschema import Draft202012Validator
+
+validators = {}
+for name in ("request", "policy", "signing-plan"):
+    schema = json.loads(Path(f"schemas/m0-{name}-1.schema.json").read_text())
+    Draft202012Validator.check_schema(schema)
+    validators[name] = Draft202012Validator(schema)
+for path in sorted(Path("fixtures/m0-launch").glob("*.json")):
+    name = "policy" if path.name.startswith("policy") else (
+        "signing-plan" if path.name.startswith("signing") else "request")
+    errors = list(validators[name].iter_errors(json.loads(path.read_text())))
+    assert bool(errors) == (".invalid." in path.name), path
+print("M0 shape fixtures passed; authority/runtime/activation unverified")
+PY
+```
+
+Output goes to stdout. This does not check CCJ lexical rules, cryptographic
+validity, cross-field/currentness/replay semantics or any native deployment gate.
 
 ## License
 

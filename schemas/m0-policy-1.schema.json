@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DRAFT swarma-dispatcher M0 policy/1",
+  "description": "Protected operator-installed candidate, not an operator approval envelope or installation API. Cross-field time, identity, provenance and durability predicates are normative in spec/m0-launch.md.",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}(?![\\s\\S])"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "serial": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "key": {
+      "type": "string",
+      "pattern": "^ed25519:[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048](?![\\s\\S])"
+    },
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uid",
+        "generation"
+      ],
+      "properties": {
+        "uid": {
+          "type": "integer",
+          "minimum": 30000,
+          "maximum": 59999
+        },
+        "generation": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "association": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision",
+        "uid",
+        "generation",
+        "key",
+        "registration_number",
+        "master_epoch"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "$ref": "#/$defs/serial"
+        },
+        "uid": {
+          "type": "integer",
+          "minimum": 30000,
+          "maximum": 59999
+        },
+        "generation": {
+          "$ref": "#/$defs/id"
+        },
+        "key": {
+          "$ref": "#/$defs/key"
+        },
+        "registration_number": {
+          "$ref": "#/$defs/serial"
+        },
+        "master_epoch": {
+          "$ref": "#/$defs/serial"
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "worker_plan",
+        "profile",
+        "harness",
+        "exec_profile"
+      ],
+      "properties": {
+        "worker_plan": {
+          "$ref": "#/$defs/digest"
+        },
+        "profile": {
+          "$ref": "#/$defs/digest"
+        },
+        "harness": {
+          "$ref": "#/$defs/digest"
+        },
+        "exec_profile": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "v",
+    "kind",
+    "id",
+    "revision",
+    "receiver",
+    "association",
+    "worker",
+    "plan",
+    "catalog",
+    "qualification",
+    "operations",
+    "limits",
+    "not_before",
+    "not_after"
+  ],
+  "properties": {
+    "v": {
+      "const": 1
+    },
+    "kind": {
+      "const": "swarma-dispatcher m0-policy/1"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "revision": {
+      "$ref": "#/$defs/serial"
+    },
+    "receiver": {
+      "$ref": "#/$defs/id"
+    },
+    "association": {
+      "$ref": "#/$defs/association"
+    },
+    "worker": {
+      "$ref": "#/$defs/worker"
+    },
+    "plan": {
+      "$ref": "#/$defs/plan"
+    },
+    "catalog": {
+      "$ref": "#/$defs/digest"
+    },
+    "qualification": {
+      "$ref": "#/$defs/digest"
+    },
+    "operations": {
+      "const": [
+        "dispatch",
+        "cancel"
+      ]
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_workers",
+        "max_physical_starts",
+        "max_runtime_seconds",
+        "detect_seconds",
+        "stop_seconds"
+      ],
+      "properties": {
+        "max_workers": {
+          "const": 1
+        },
+        "max_physical_starts": {
+          "const": 1
+        },
+        "max_runtime_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "detect_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "stop_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 270
+        }
+      }
+    },
+    "not_before": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 253402300799
+    },
+    "not_after": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 253402300799
+    }
+  }
+}

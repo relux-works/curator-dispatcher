@@ -1,0 +1,35 @@
+{
+  "v": 1,
+  "kind": "swarma-dispatcher m0-signing-plan/1",
+  "profile": "dispatcher-request/1",
+  "request": {
+    "v": 1,
+    "kind": "swarma-dispatcher m0-request/1",
+    "request_id": "00000000000000000000000000000001",
+    "receiver": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "policy": {
+      "id": "dddddddddddddddddddddddddddddddd",
+      "revision": 1
+    },
+    "association": {
+      "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": 1,
+      "uid": 30001,
+      "generation": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "key": "ed25519:11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+      "registration_number": 1,
+      "master_epoch": 1
+    },
+    "worker": {
+      "uid": 30002,
+      "generation": "cccccccccccccccccccccccccccccccc"
+    },
+    "plan": {
+      "worker_plan": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "profile": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "harness": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "exec_profile": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    "op": "dispatch"
+  }
+}
