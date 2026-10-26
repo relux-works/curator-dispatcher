@@ -174,6 +174,18 @@
     "expected": "REFUSE or retain original debt; never execute as a new admission"
   },
   {
+    "id": "qualification-measurement-order",
+    "change": "infer no native qualification measurement from absent/malformed qualified.json with readable protected root/lock and no in-progress/pending-activation",
+    "obligation": "qualification/config",
+    "expected": "Reject inference: Resolve may invoke Observe (Version first) before qualified.json; refusal69 admits no lease/app-server, later runner versionProbe requires successful qualification; no probe authorized here"
+  },
+  {
+    "id": "unknown-publication",
+    "change": "infer old O preserved or absent O still absent after successful rename when D loses completion observation, or consume new0600 bytes as authenticated Result",
+    "obligation": "Result/debt",
+    "expected": "Reject inference: rename replaces/creates O and fixes runner0 despite later stop; retain original publication/Result/effect and unknown cleanup debt, no D read/consumption, success/failure disposition or fresh admission"
+  },
+  {
     "id": "late-stop",
     "change": "rewrite runner0 after successful rename as runner130",
     "obligation": "Result/debt",

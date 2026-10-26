@@ -24,8 +24,18 @@ Broker `0b29c086608d808903b9abf286497d941297a078` has an experimental Linux
 [protected client][client]. The older [v0 §6][v0] command paragraph still says
 “not yet implemented”; it is not current implementation-absence evidence.
 Required production observers remain unavailable: ordinary execution refuses
-69 `lease_harness_unqualified` before any lease/version probe; owner remains
-stopped. Source availability is not a qualified deployed/installable package.
+69 `lease_harness_unqualified` with no lease and no admitted app-server; owner
+remains stopped. Protected qualification measurements occur **during**
+[`protectedAuthority.Resolve` through `productionQualifiedSet`][authority] →
+[`static.Config.Qualified`][qualified] → [`qualification.Repository.Read`][qualification-read].
+With readable protected root and lock and neither `in-progress` nor `pending-activation`, Read
+invokes [`Observe` (native `Version` first)][observe] before reading `qualified.json`.
+Absent or malformed `qualified.json` therefore does not imply that no native
+qualification measurement occurred. The later runner `versionProbe` follows
+successful protected qualification; it is a separate step before lease admission.
+These source facts authorize no target execution or probe here; native/OS,
+typed-plan/authority and Result gates remain closed. Source availability is not
+a qualified deployed/installable package.
 `internal/runner` is not a public Go API; the proposed adapter uses the existing
 command, never imports that internal package.
 
@@ -258,8 +268,19 @@ own facts. Foreign adapter context errors/timeouts are not runner-owned 124.
 Successful final atomic rename fixes runner terminal0 despite racing/later stop;
 D must not rewrite that fact to75/130. D disposition/deadline failure is separate.
 Only matching completed turn plus confirmed cleanup/release permits0600 atomic
-replacement. Nonzero/unknown preserves old output; never consume it as this run's
-result. Known staging is removed on failure; unknown cleanup retains debt.
+replacement. A known runner refusal before publication preserves old O, or leaves
+a previously absent O absent. Successful `output.root.Rename` is the irreversible
+publication point ([output commit][output], [runner publication][run]): it replaces
+old O or creates O for a fresh J. D can lose reliable completion observation
+afterward, so unknown completion can coexist with **new O**;
+it does not imply preservation of old output or absence of publication. Runner
+terminal0 after successful rename is distinct from D's observed completion and
+disposition. Bytes or mode0600 grant no D read/consumption authority, new success
+or failure disposition, or fresh admission. Retain original publication/Result/
+effect debt on unknown completion. Known staging is removed on prepublication
+failure; unknown cleanup retains its original debt. The [adjacent inert boundary
+witnesses](../fixtures/m0-executor-entry/boundary.witnesses.json) cover both old
+and previously absent O; they establish no runtime behavior or Result authority.
 Cleanup shares5 s, process confirmation<=3.5 s, release<=remaining2 s; no claimed
 bound on all syscalls/guard lifecycle follows. Fresh connection/kernel identity
 and actual protected policy rechecks remain broker-owned. D never requests,
@@ -306,3 +327,9 @@ required or claimed for this documentary slice.
 [v0]: https://github.com/relux-works/swarma-credential-broker/blob/0b29c086608d808903b9abf286497d941297a078/spec/v0-codex-refresher.md#6-external-token-delivery-and-one-shot-runner
 
 [containment]: https://github.com/relux-works/swarma-credential-broker/blob/0b29c086608d808903b9abf286497d941297a078/internal/runner/containment_linux.go#L62
+[authority]: https://github.com/relux-works/swarma-credential-broker/blob/0b29c086608d808903b9abf286497d941297a078/internal/runner/authority_linux.go
+[qualified]: https://github.com/relux-works/swarma-credential-broker/blob/0b29c086608d808903b9abf286497d941297a078/internal/policy/qualification_linux.go
+[qualification-read]: https://github.com/relux-works/swarma-credential-broker/blob/0b29c086608d808903b9abf286497d941297a078/internal/qualification/storage_linux.go
+[observe]: https://github.com/relux-works/swarma-credential-broker/blob/0b29c086608d808903b9abf286497d941297a078/internal/qualification/observer_linux.go
+[output]: https://github.com/relux-works/swarma-credential-broker/blob/0b29c086608d808903b9abf286497d941297a078/internal/runner/output.go
+[run]: https://github.com/relux-works/swarma-credential-broker/blob/0b29c086608d808903b9abf286497d941297a078/internal/runner/run.go

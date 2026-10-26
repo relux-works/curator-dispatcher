@@ -1,0 +1,114 @@
+{
+  "status": "INERT documentary expectations; no execution, qualification or Result authority",
+  "source_boundary": "0b29c086608d808903b9abf286497d941297a078",
+  "qualification": {
+    "preconditions": "Hypothetical readable protected configuration/root/lock, admitted account/profile, no in-progress/pending-activation, and measurements otherwise available; no probe is run here",
+    "resolve_chain": [
+      "protectedAuthority.Resolve",
+      "productionQualifiedSet",
+      "static.Config.Qualified",
+      "qualification.Repository.Read"
+    ],
+    "cases": [
+      {
+        "id": "absent-qualified-record",
+        "qualified_json": "absent",
+        "expected_order": [
+          "Observe: native Version first",
+          "attempt qualified.json read",
+          "refuse69 lease_harness_unqualified"
+        ],
+        "lease": false,
+        "admitted_app_server": false,
+        "later_runner_versionProbe": false
+      },
+      {
+        "id": "malformed-qualified-record",
+        "qualified_json": "malformed",
+        "expected_order": [
+          "Observe: native Version first",
+          "read/decode qualified.json",
+          "refuse69 lease_harness_unqualified"
+        ],
+        "lease": false,
+        "admitted_app_server": false,
+        "later_runner_versionProbe": false
+      },
+      {
+        "id": "qualified-control",
+        "qualified_json": "valid with complete matching current protected evidence and activation",
+        "expected_order": [
+          "Observe: native Version first",
+          "read/validate qualified.json and all required evidence",
+          "successful protected qualification",
+          "later runner versionProbe subject to remaining preflight gates"
+        ],
+        "authority": "Conditional source-order control only; no actual qualification, lease or app-server admission authorized"
+      }
+    ],
+    "limit": "Unavailable observers may refuse before the record read; absent/malformed qualified.json never proves no earlier measurement. All native/OS/typed-plan/Result gates remain closed."
+  },
+  "publication": {
+    "preconditions": "Hypothetical otherwise qualified tuple; new O denotes the final text of this original execution. No filesystem operation is performed.",
+    "cases": [
+      {
+        "id": "prepublication-failure-old",
+        "before": "old O",
+        "event": "known staging I/O failure before rename",
+        "rename_succeeded": false,
+        "after": "old O",
+        "runner_terminal": 75,
+        "d_observation": "known prepublication refusal; never consume output as this run Result"
+      },
+      {
+        "id": "publication-success-old",
+        "before": "old O",
+        "event": "matching completed turn, confirmed cleanup/release, successful rename, later stop",
+        "rename_succeeded": true,
+        "after": "new O",
+        "runner_terminal": 0,
+        "d_observation": "runner0 observed; D disposition/deadline and authenticated Result remain separate"
+      },
+      {
+        "id": "publication-unobserved-old",
+        "before": "old O",
+        "event": "matching completed turn, confirmed cleanup/release, successful rename, later stop, D loses reliable completion observation",
+        "rename_succeeded": true,
+        "after": "new O",
+        "runner_terminal": 0,
+        "d_observation": "unknown completion; no inferred D success/failure or fresh admission",
+        "debt": "original publication/Result/effect and unknown cleanup debt retained"
+      },
+      {
+        "id": "prepublication-failure-absent",
+        "before": "absent O",
+        "event": "known staging I/O failure before rename",
+        "rename_succeeded": false,
+        "after": "absent O",
+        "runner_terminal": 75,
+        "d_observation": "known prepublication refusal; never consume output as this run Result"
+      },
+      {
+        "id": "publication-success-absent",
+        "before": "absent O",
+        "event": "matching completed turn, confirmed cleanup/release, successful rename, later stop",
+        "rename_succeeded": true,
+        "after": "new O",
+        "runner_terminal": 0,
+        "d_observation": "runner0 observed; D disposition/deadline and authenticated Result remain separate"
+      },
+      {
+        "id": "publication-unobserved-absent",
+        "before": "absent O",
+        "event": "matching completed turn, confirmed cleanup/release, successful rename, later stop, D loses reliable completion observation",
+        "rename_succeeded": true,
+        "after": "new O",
+        "runner_terminal": 0,
+        "d_observation": "unknown completion; no inferred D success/failure or fresh admission",
+        "debt": "original publication/Result/effect and unknown cleanup debt retained"
+      }
+    ],
+    "common_boundary": "Bytes/mode0600 grant no D read/consumption authority, success/failure disposition or fresh admission. Runner status alone is no authenticated durable Result, account-wide absence or debt discharge.",
+    "unknown_boundary": "Keep original publication/Result/effect debt and unknown cleanup debt; no retry start, new claim or clock reset. No Result protocol, quota, ACL or cleanup/wipe authority is selected."
+  }
+}

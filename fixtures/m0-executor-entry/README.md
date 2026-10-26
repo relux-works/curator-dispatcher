@@ -39,3 +39,20 @@ Runner currently does not reject inherited plan handles. The separate current
 broker agent-executable handle inheritance/re-exec issue requires an owning fix
 and native trace before M0; no path-allowlist shortcut or blanket internal-FD
 exemption is claimed. Environment conformance and OS exec refusal are separate.
+
+`boundary.witnesses.json` records inert qualification-order and publication
+expectations at the pinned broker source boundary. Readable protected root/lock
+and no in-progress/pending-activation markers allow Observe (Version first) before qualified.json;
+absent/malformed records do not prove no earlier measurement. Successful protected
+qualification is the conditional positive neighbor for the later runner
+versionProbe, not an execution authorization here.
+
+Publication witnesses pair old O and previously absent O for known prepublication
+failure, observed successful publication, and successful rename with completion
+unobserved by D. Rename replaces/creates O and fixes runner terminal0 even with a
+later stop; lost completion observation retains original publication/Result/effect
+debt and unknown cleanup debt. Existing bytes/mode0600 authorize no D read or
+consumption, D success/failure disposition or new admission. The forbidden
+controls reject both the no-measurement inference and unknown-preserves-old-output
+inference. None of these documents executes a probe, rename or validator; native
+qualification, typed authority and Result selection remain open, production0/8.
