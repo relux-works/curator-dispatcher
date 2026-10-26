@@ -56,6 +56,67 @@ These PlantUML sources describe the draft service design and label later SH2+ ga
 
 Companion views: [bring up team](diagrams/bring-up-team.puml) ([§5.5](spec/dispatcher.md#55-bring-up-team-specified-but-unpublished)), [reconciliation](diagrams/reconcile.puml) ([§7.1](spec/dispatcher.md#71-reconciliation)), [service daemon / gated SH2+ backend](diagrams/v1-daemon.puml) ([§12](spec/dispatcher.md#12-session-host-backend-later-activation-gate)), [workspace transfer](diagrams/workspace-transfer.puml) ([§5.2](spec/dispatcher.md#52-orchestrator-allocations)) and [activation / maintenance / node-wide stop](diagrams/activation.puml) ([§11](spec/dispatcher.md#11-installation-and-activation)).
 
+## Tools and CI
+
+The `go` job in [`.github/workflows/linux-ci.yml`](.github/workflows/linux-ci.yml)
+runs on Linux (`ubuntu-24.04`) for pull requests and pushes to `main`, with
+read-only repository contents permission. Checkout and setup-go are pinned to
+commit IDs; checkout does not persist credentials. Go is pinned to `1.26.10`
+with `GOTOOLCHAIN=local`, `GOMAXPROCS=2`, and module caching disabled.
+
+The job installs CI tools in the runner's temporary directory:
+
+```sh
+python3 -m venv "$RUNNER_TEMP/ci-python"
+"$RUNNER_TEMP/ci-python/bin/python3" -m pip install jsonschema==4.25.1 PyYAML==6.0.2
+mkdir -p "$RUNNER_TEMP/ci-bin"
+GOBIN="$RUNNER_TEMP/ci-bin" go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+```
+
+It adds those `bin` directories to `PATH`, then runs these entrypoints:
+
+- `actionlint -shellcheck= -pyflakes= .github/workflows/linux-ci.yml` checks
+  workflow syntax and action expressions. Optional ShellCheck and Pyflakes
+  integrations are disabled; this is not a complete shell/Python linter.
+- The workflow's `schemas` step parses every `schemas/**/*.schema.json` with
+  Python `json.loads` and calls `jsonschema.Draft202012Validator.check_schema`.
+  Invalid JSON, an invalid meta-schema shape, or no schemas fails the job.
+  This does not validate result instances, cross-service semantics, the prose
+  specification, or deployment readiness.
+- The `source` step refuses any `*.go` file or nested `go.mod` anywhere below the
+  checkout (including symlinks, excluding `.git`) without a root `go.mod`.
+  When neither exists, it explicitly reports **spec-only bootstrap**, with
+  dispatcher build/vet/formatting/tests
+  unrun. Installing Go to run CI tooling does not implement the dispatcher.
+- When a root `go.mod` exists, the same step runs, in order, under Bash with
+  `-e -o pipefail`:
+
+  ```sh
+  go mod verify
+  go build ./...
+  go vet ./...
+  out="$(gofmt -l .)"
+  if [[ -n "$out" ]]; then
+    printf '%s\n' "$out"
+  fi
+  test -z "$out"
+  go test -v -p 1 -count=1 -timeout=20m ./...
+  ```
+
+  Each error stops the step. A future module must use this pinned toolchain or
+  deliberately update CI. The commands target the root module and active Linux
+  build tags; nested modules, other platforms/tags, race detection, privileged
+  account fixtures, runtime activation and integration qualification are outside
+  this bootstrap's coverage. `go mod verify` checks downloaded module contents;
+  it does not replace dependency policy or guarantee an unchanged `go.sum`.
+- `python3 .scripts/test_linux_ci.py -v` qualifies the CI blocks using temporary,
+  dependency-free Go modules, schema/workflow fixtures, and narrowing mutations.
+  These are CI regression tests, not dispatcher implementation tests. Python
+  orchestrates the real YAML entrypoints and meta-schema validator without adding
+  a placeholder Go package. Run this command only on an isolated runner; fixtures
+  execute real Go builds and tests. Logs go to the job output, fixtures are
+  removed after each test, and the whole job has a 30-minute timeout.
+
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).

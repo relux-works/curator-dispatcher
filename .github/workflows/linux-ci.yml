@@ -1,0 +1,78 @@
+name: Linux Go CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GOTOOLCHAIN: local
+      GOMAXPROCS: '2'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: '1.26.10'
+          cache: false # There is no module or go.sum in the spec-only bootstrap.
+      - name: Install CI validation tools
+        run: |
+          python3 -m venv "$RUNNER_TEMP/ci-python"
+          "$RUNNER_TEMP/ci-python/bin/python3" -m pip install jsonschema==4.25.1 PyYAML==6.0.2
+          printf '%s\n' "$RUNNER_TEMP/ci-python/bin" >> "$GITHUB_PATH"
+          mkdir -p "$RUNNER_TEMP/ci-bin"
+          GOBIN="$RUNNER_TEMP/ci-bin" go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+          printf '%s\n' "$RUNNER_TEMP/ci-bin" >> "$GITHUB_PATH"
+      - name: Validate workflow
+        id: workflow
+        run: actionlint -shellcheck= -pyflakes= .github/workflows/linux-ci.yml
+      - name: Validate draft schemas
+        id: schemas
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from jsonschema import Draft202012Validator
+
+          paths = sorted(Path('schemas').rglob('*.schema.json'))
+          if not paths:
+              raise SystemExit('No draft schemas found')
+          for path in paths:
+              schema = json.loads(path.read_text())
+              Draft202012Validator.check_schema(schema)
+              print(f'Valid draft schema: {path}')
+          PY
+      - name: Check Go or report spec-only bootstrap
+        id: source
+        run: |
+          if [[ ! -e go.mod && ! -L go.mod ]]; then
+            sources="$(find . -name .git -prune -o \( -type f -o -type l \) \( -name '*.go' -o -name go.mod \) -print)"
+            if [[ -n "$sources" ]]; then
+              printf '%s\n' 'Go source or module requires a root go.mod:' "$sources" >&2
+              exit 1
+            fi
+            printf '%s\n' 'Spec-only bootstrap: no go.mod or Go source; dispatcher build, vet, formatting and tests did not run.'
+            exit 0
+          fi
+          go mod verify
+          go build ./...
+          go vet ./...
+          out="$(gofmt -l .)"
+          if [[ -n "$out" ]]; then
+            printf '%s\n' "$out"
+          fi
+          test -z "$out"
+          go test -v -p 1 -count=1 -timeout=20m ./...
+      - name: Qualify CI behavior with isolated fixtures
+        run: python3 .scripts/test_linux_ci.py -v
