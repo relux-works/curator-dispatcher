@@ -9,7 +9,7 @@ It works with a privileged account manager and launcher, and an unprivileged cre
 
 The one-shot executor is `curator-run` from `curator-agent-launcher`, in a versioned narrow exec mode under the agent account: it verifies and executes a caller-composed plan, never composes or resolves profiles, and has no network access except to the broker. It is the first broker consumer; the board runner and session host ask the dispatcher rather than embedding broker clients. Its intake and the Decision 0021 amendment must be published and qualified before activation. SH2+ long sessions instead use the agent-side `swarma-session-runner`, sharing the launch library; the host service owns session metadata and fences, while the runner owns PTY or app-server transport and lease renewal.
 
-**Status: design in progress; bounded byte-frame and in-memory admission libraries are implemented.**
+**Status: launch design in progress; byte-frame/admission libraries and Linux capacity-refusal transport source are implemented. Native transport deployment remains unqualified.**
 [`internal/frame`](internal/frame/) reads and writes a four-byte unsigned
 big-endian length followed by 1–131072 payload bytes, per
 [§8.3](spec/dispatcher.md#83-socket-dispatch1) and the closed
@@ -92,6 +92,71 @@ These PlantUML sources describe the draft service design and label later SH2+ ga
 | M-DP3 | [Storage layout](diagrams/storage-layout.puml) | [State directory](spec/dispatcher.md#41-state-directory), [socket](spec/dispatcher.md#83-socket-dispatch1) |
 
 Companion views: [bring up team](diagrams/bring-up-team.puml) ([§5.5](spec/dispatcher.md#55-bring-up-team-specified-but-unpublished)), [reconciliation](diagrams/reconcile.puml) ([§7.1](spec/dispatcher.md#71-reconciliation)), [service daemon / gated SH2+ backend](diagrams/v1-daemon.puml) ([§12](spec/dispatcher.md#12-session-host-backend-later-activation-gate)), [workspace transfer](diagrams/workspace-transfer.puml) ([§5.2](spec/dispatcher.md#52-orchestrator-allocations)) and [activation / maintenance / node-wide stop](diagrams/activation.puml) ([§11](spec/dispatcher.md#11-installation-and-activation)).
+
+## Linux transport tools
+
+The [reference contract](spec/transport.md) is implemented in `internal/transport`,
+with `cmd/swarma-dispatcher` and `cmd/swarma-capacity`. Both refuse unsupported
+platforms. They require one explicit `--config /absolute/file.json`; there are no
+environment defaults, endpoint overrides, account lookup or config reloads.
+The separate closed server/client schemas, root ownership/modes, numeric pins,
+caller UID non-reuse and fixed `/opt/swarma/run/dispatcher/dispatcher.sock` path
+are normative in the contract. This repository does not provision them. The
+transport never uses the admission reducer to advertise readiness or availability;
+every valid capacity request returns `capacity:hold`. No launch, journal,
+accounting, signed authority or recovery-control operation is implemented here.
+
+On an admitted isolated Linux runner, build and test with the pinned CI toolchain:
+
+```sh
+go build ./...
+go vet ./...
+go test -v -p 1 -count=1 -timeout=20m ./...
+```
+
+Build/run entrypoints for a separately qualified deployment are:
+
+```sh
+go build -o .temp/swarma-dispatcher ./cmd/swarma-dispatcher
+go build -o .temp/swarma-capacity ./cmd/swarma-capacity
+.temp/swarma-dispatcher --config /absolute/server.json
+.temp/swarma-capacity --config /absolute/client.json
+```
+
+These commands do not authorize installation or execution on an orchestration
+host. Daemon diagnostics go to stderr; it produces no readiness, journal or
+accounting output. The client prints the exact capacity-refusal JSON and exits 2
+after a valid hold exchange; local/config/protocol failure exits 1 with stderr
+diagnostics. It makes one attempt and no automatic retry. SIGINT/SIGTERM requests
+idempotent daemon shutdown; successful owned cleanup exits 0, while cleanup,
+ownership or budget failure exits 1. Nothing launches agents.
+
+The daemon sets startup umask `0177`, acquires its stable `flock`, refuses every
+pre-existing endpoint, binds exactly `0600`, changes GID **before** mode `0660`,
+and listens only after identity checks. Internal descriptor-relative Unix paths
+anchor bind/connect to the validated directory without an endpoint override.
+All socket reads use nonblocking `recvmsg` through the Go runtime poller; sends
+use `MSG_NOSIGNAL`. Generic `frame.Read` is not an ancillary guard and is not used
+on sockets. Product code never sweeps inherited descriptors or adopts a listener;
+std-FD-only exec is a deployment requirement.
+
+After unclean death there is no automatic restart or stale-socket removal.
+The contract's operator filesystem procedure requires the verified lifetime
+lock, exact socket/directory identity and an `ECONNREFUSED` probe. The three
+residual states are `(service_gid, 0600)`, `(connect_gid, 0600)` and
+`(connect_gid, 0660)` for this implementation's bind/GID/mode order. Other
+GID/mode/owner/type states refuse; cleanup is not a wire operation and unknown,
+live or foreign paths stay untouched.
+
+Linux tests use real unprivileged sockets, kernel peer credentials, received
+rights, local owned filesystem fixtures and narrowly injected publication/receive
+errors. Fixture paths go under the checkout's ignored `.temp/`; output goes to
+the hosted test log. Mechanism tests constructing internal prevalidated data do
+**not** prove protected configuration, distinct caller/service UIDs or complete
+CLI deployment. The root-owned fixed endpoint and separate UID/group enrollment
+need an admitted isolated deployment fixture; no such qualification is supplied
+here and no production bypass flag exists. Config/pin filesystems must be local
+and trusted; userspace deadlines cannot bound a hung kernel/filesystem operation.
 
 ## Tools and CI
 

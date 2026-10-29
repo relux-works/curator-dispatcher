@@ -71,8 +71,8 @@ opened `O_RDWR|O_CREAT|O_NOFOLLOW|O_CLOEXEC`, creation mode `0600`; a well-forme
 Use BSD `flock(LOCK_EX|LOCK_NB)` on that open file description, never POSIX byte-range locks; contention refuses startup.
 The daemon retains this descriptor through all cleanup and releases it only at exit; future state/receiver locks are distinct.
 Startup then refuses any existing endpoint: stale/live socket, regular file, hard-link alias or symlink. Never probe-and-steal, unlink or adopt one.
-Bind a newly created nonblocking `SOCK_STREAM|SOCK_CLOEXEC` listener through the pinned directory with initial permissions no wider than `0600`.
-Record the created path's device/inode immediately; explicitly set its GID to `connect_gid` and mode to `0660`, then verify owner/GID/mode/socket type
+Bind a newly created nonblocking `SOCK_STREAM|SOCK_CLOEXEC` listener through the pinned directory with initial permissions exactly `0600` (startup umask `0177`, before concurrent work).
+Record the created path's device/inode immediately; set its GID to `connect_gid` first and its mode to `0660` second, then verify owner/GID/mode/socket type
 and unchanged device/inode via the pinned directory before listen/accept. Wrong group/permission or path changes refuse, never repair a foreign path.
 If any post-bind startup step fails, close the listener and unlink only that recorded unchanged socket under the lifetime lock, then exit failure.
 If identity cannot be proved or cleanup fails, leave it untouched and report failure; do not claim successful cleanup or restartability.
