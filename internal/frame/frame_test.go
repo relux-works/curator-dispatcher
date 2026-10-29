@@ -47,7 +47,7 @@ func TestReadLengthGate(t *testing.T) {
 }
 
 // One-byte chunks exercise fragmented header/payload reads at the minimum and
-// inclusive maximum. Binary and non-object bytes confirm content stays opaque.
+// inclusive maximum and maximum-minus-one. Binary and non-object bytes stay opaque.
 func TestReadFragmented(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -56,6 +56,7 @@ func TestReadFragmented(t *testing.T) {
 	}{
 		{"minimum", []byte{0, 0, 0, 1}, []byte{0xff}},
 		{"non-object", []byte{0, 0, 0, 3}, []byte("[1]")},
+		{"maximum minus one", []byte{0, 1, 255, 255}, bytes.Repeat([]byte{0xa5}, 131071)},
 		{"maximum", []byte{0, 2, 0, 0}, bytes.Repeat([]byte{0xa5}, 131072)},
 	}
 	for _, tt := range tests {
@@ -70,8 +71,8 @@ func TestReadFragmented(t *testing.T) {
 	}
 }
 
-// Each truncation preserves io.ReadFull's exact error and exposes no partial
-// payload. No-payload EOF intentionally differs from a partially read payload.
+// Clean EOF is only an empty stream. EOF after any header byte, including a
+// complete header with no payload, is truncation and exposes no partial payload.
 func TestReadTruncated(t *testing.T) {
 	tests := []struct {
 		name string
@@ -82,7 +83,9 @@ func TestReadTruncated(t *testing.T) {
 		{"one header byte", []byte{0}, io.ErrUnexpectedEOF},
 		{"two header bytes", []byte{0, 0}, io.ErrUnexpectedEOF},
 		{"three header bytes", []byte{0, 0, 0}, io.ErrUnexpectedEOF},
-		{"no payload", []byte{0, 0, 0, 3}, io.EOF},
+		{"minimum no payload", []byte{0, 0, 0, 1}, io.ErrUnexpectedEOF},
+		{"no payload", []byte{0, 0, 0, 3}, io.ErrUnexpectedEOF},
+		{"maximum no payload", []byte{0, 2, 0, 0}, io.ErrUnexpectedEOF},
 		{"one payload byte", []byte{0, 0, 0, 3, 'a'}, io.ErrUnexpectedEOF},
 		{"two payload bytes", []byte{0, 0, 0, 3, 'a', 'b'}, io.ErrUnexpectedEOF},
 	}
@@ -121,8 +124,33 @@ func TestReadErrors(t *testing.T) {
 	}
 }
 
+// Wrapped EOF is not the EOF sentinel: errors in either frame part retain their
+// exact identity rather than becoming a clean close or a truncation verdict.
+func TestReadWrappedEOF(t *testing.T) {
+	failure := errors.Join(io.EOF)
+	for _, prefix := range [][]byte{nil, {0}, {0, 0, 0, 3}, {0, 0, 0, 3, 'a'}} {
+		r := io.MultiReader(bytes.NewReader(prefix), &errorReader{err: failure})
+		got, err := Read(r)
+		if err != failure || got != nil {
+			t.Fatalf("prefix %x: Read = (%v, %v), want (nil, wrapped EOF)", prefix, got, err)
+		}
+	}
+}
+
+// Complete reads retain io.ReadFull's full-count success even when the reader
+// reports an error alongside all requested bytes in both header and payload.
+func TestReadFullCountError(t *testing.T) {
+	for _, failure := range []error{io.EOF, errors.New("full-count failure")} {
+		r := &errorReader{data: []byte{0, 0, 0, 1, 'a'}, err: failure}
+		got, err := Read(r)
+		if err != nil || !bytes.Equal(got, []byte{'a'}) || len(r.data) != 0 {
+			t.Fatalf("Read = (%q, %v), remaining = %x; want complete payload", got, err, r.data)
+		}
+	}
+}
+
 // Independent literal headers check big-endian wire output at the minimum,
-// an asymmetric length, and the maximum; successful writes preserve caller data.
+// an asymmetric length, maximum-minus-one and maximum; writes preserve caller data.
 func TestWriteWire(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -131,6 +159,7 @@ func TestWriteWire(t *testing.T) {
 	}{
 		{"minimum", []byte{0, 0, 0, 1}, []byte{0xff}},
 		{"asymmetric length", []byte{0, 0, 1, 2}, bytes.Repeat([]byte{'x'}, 258)},
+		{"maximum minus one", []byte{0, 1, 255, 255}, bytes.Repeat([]byte{0xa5}, 131071)},
 		{"maximum", []byte{0, 2, 0, 0}, bytes.Repeat([]byte{0xa5}, 131072)},
 	}
 	for _, tt := range tests {

@@ -9,7 +9,7 @@ It works with a privileged account manager and launcher, and an unprivileged cre
 
 The one-shot executor is `curator-run` from `curator-agent-launcher`, in a versioned narrow exec mode under the agent account: it verifies and executes a caller-composed plan, never composes or resolves profiles, and has no network access except to the broker. It is the first broker consumer; the board runner and session host ask the dispatcher rather than embedding broker clients. Its intake and the Decision 0021 amendment must be published and qualified before activation. SH2+ long sessions instead use the agent-side `swarma-session-runner`, sharing the launch library; the host service owns session metadata and fences, while the runner owns PTY or app-server transport and lease renewal.
 
-**Status: design in progress; only a bounded byte-frame library is implemented.**
+**Status: design in progress; bounded byte-frame and in-memory admission libraries are implemented.**
 [`internal/frame`](internal/frame/) reads and writes a four-byte unsigned
 big-endian length followed by 1–131072 payload bytes, per
 [§8.3](spec/dispatcher.md#83-socket-dispatch1) and the closed
@@ -18,6 +18,12 @@ payload allocation/read; nonempty bytes remain opaque. This I/O primitive does
 not validate JSON, CCJ-1 or object shape, authenticate callers, implement a daemon
 or launcher, or establish launch authority. A failed read returns no payload;
 callers must discard the stream after a framing error, including a partial write.
+Clean EOF occurs only before a new header; EOF within a frame reports truncation.
+[`internal/admission`](internal/admission/) supplies bounded request deduplication,
+independent allocation/execution quotas, cancellation and epoch/version-fenced
+completion. Unknown outcomes retain their claims. A trusted adapter must supply
+authenticated principals, current gates and independently verified evidence;
+the reducer supplies neither durable storage nor process-absence verification.
 No running launch service is supplied. The specification (the `swarma-dispatcher`
 Unix-socket service on `dispatch/1` from slice 0; later queueing, events, long waits
 and integrations behind capability gates on the same core and transport) is

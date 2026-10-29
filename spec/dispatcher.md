@@ -1,6 +1,6 @@
 # swarma-dispatcher: specification
 
-- **Status:** draft v0.15 (2026-10-26). Nothing is implemented.
+- **Status:** draft v0.15 (2026-10-26). Implementation status is tracked in the [README](../README.md); the full launch service is not supplied.
 - **Normative language:** MUST, MUST NOT, SHOULD and MAY are used as in RFC 2119.
 - **Companions:** [swarma-user-manager](https://github.com/relux-works/swarma-user-manager) (agent accounts, the launcher, the stop operation), [swarma-credential-broker](https://github.com/relux-works/swarma-credential-broker) (bindings, caller-authorization dependencies, leases), curator-spec CIP-0011 (the Curator side), the platform architecture §7.1 (launch dispatcher), §5.1 (launch contract), §5.3 (fences and restarts), §7.2 (key keeper), §7.5 (isolation).
 
@@ -107,7 +107,7 @@ Figure M-DP1: [process and component boundaries](../diagrams/components.puml).
 
 | Slice | Shape | Adds |
 |---|---|---|
-| initial protected-launch slice (slice 0) | unprivileged `swarma-dispatcher` Unix-socket service on `dispatch/1`, using the broker's connection and framing rules (§8.3); temporary capacity closure refuses | requests, allocations, executions, authority, capacity claims, provisioning, start, stop, cleanup and reconciliation; target: trusted direct workers and orchestrators only after the caller/bootstrap and dependency gates below qualify; the untrusted class is refused (code unpublished) |
+| initial protected-launch slice (slice 0) | unprivileged `swarma-dispatcher` Unix-socket service on `dispatch/1`, using the broker's connection rules and local byte framing (§8.3); temporary capacity closure refuses | requests, allocations, executions, authority, capacity claims, provisioning, start, stop, cleanup and reconciliation; target: trusted direct workers and orchestrators only after the caller/bootstrap and dependency gates below qualify; the untrusted class is refused (code unpublished) |
 | later capability-gated slices | the same service, core and transport | queue with handles, events, long waits and drain; session-host backend, recursive orchestrator provisioning and key keeper registration each require their publication and qualification gates (§§5.2, 12, 14) |
 
 Quotas and authority failures always refuse; neither is queueable (§3.5, §9). Initial admission omits queueing, events, long waits and advanced integrations. Capability negotiation and refusal mappings for unsupported capabilities would need publication (§16). Direct operator ALLSTOP containment/stops remain available under §6 during dispatcher failure; its own part stays unknown until reconciliation. The service establishes its recovery/control surface before forward admission (§§7.1, 8.3, 11). Forward readiness requires complete classification and accounting, with unresolved effects demonstrably confined to retained claims and identities. An absent daemon refuses; an admission-unready daemon serves authorized recovery controls once their prerequisites hold. There is no command fallback. Binary, state-schema and backend-mode changes require the fenced operator maintenance transaction (§11).

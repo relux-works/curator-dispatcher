@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: '1.26.10'
-          cache: false # There is no module or go.sum in the spec-only bootstrap.
+          cache: false # The current module uses only the standard library; no go.sum.
       - name: Install CI validation tools
         run: |
           python3 -m venv "$RUNNER_TEMP/ci-python"

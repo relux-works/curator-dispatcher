@@ -4,7 +4,9 @@
 // Empty payloads are rejected at the framing level. Nonempty payloads are opaque:
 // this package does not validate JSON, CCJ-1, object shape, or caller authority.
 // It supplies no handshake, peer authentication, descriptor handling, daemon, or
-// launcher. Callers must provide connection security and payload validation.
+// launcher. Callers must provide connection security, payload validation and
+// finite deadlines/cancellation; a generic blocking reader/writer cannot be
+// interrupted by this library.
 //
 // Callers must serialize reads and writes in each direction of a shared stream.
 // After a framing error, discard the stream: a read may have consumed a prefix,
@@ -31,8 +33,9 @@ var (
 // Read returns one complete payload, leaving any subsequent frame unread.
 // It checks the declared size before allocating or reading the payload.
 // On any error it returns a nil payload. Header and payload read errors retain
-// io.ReadFull semantics, including io.EOF when that part has no bytes and
-// io.ErrUnexpectedEOF when that part is truncated after at least one byte.
+// io.ReadFull full-count semantics. Clean io.EOF means no new header bytes;
+// EOF anywhere inside a frame becomes io.ErrUnexpectedEOF. Other errors retain
+// their identity.
 func Read(r io.Reader) ([]byte, error) {
 	var header [4]byte
 	if _, err := io.ReadFull(r, header[:]); err != nil {
@@ -47,6 +50,9 @@ func Read(r io.Reader) ([]byte, error) {
 	}
 	payload := make([]byte, int(size))
 	if _, err := io.ReadFull(r, payload); err != nil {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
 		return nil, err
 	}
 	return payload, nil
