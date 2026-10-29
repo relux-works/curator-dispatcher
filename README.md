@@ -9,7 +9,18 @@ It works with a privileged account manager and launcher, and an unprivileged cre
 
 The one-shot executor is `curator-run` from `curator-agent-launcher`, in a versioned narrow exec mode under the agent account: it verifies and executes a caller-composed plan, never composes or resolves profiles, and has no network access except to the broker. It is the first broker consumer; the board runner and session host ask the dispatcher rather than embedding broker clients. Its intake and the Decision 0021 amendment must be published and qualified before activation. SH2+ long sessions instead use the agent-side `swarma-session-runner`, sharing the launch library; the host service owns session metadata and fences, while the runner owns PTY or app-server transport and lease renewal.
 
-**Status: design in progress.** Nothing is implemented yet. The specification (the `swarma-dispatcher` Unix-socket service on `dispatch/1` from slice 0; later queueing, events, long waits and integrations behind capability gates on the same core and transport) is [`spec/dispatcher.md`](spec/dispatcher.md); diagrams are in [`diagrams/`](diagrams/).
+**Status: design in progress; only a bounded byte-frame library is implemented.**
+[`internal/frame`](internal/frame/) reads and writes a four-byte unsigned
+big-endian length followed by 1–131072 payload bytes, per
+[§8.3](spec/dispatcher.md#83-socket-dispatch1). Empty frames are rejected before
+payload allocation/read; nonempty bytes remain opaque. This I/O primitive does
+not validate JSON, CCJ-1 or object shape, authenticate callers, implement a daemon
+or launcher, or establish launch authority. A failed read returns no payload;
+callers must discard the stream after a framing error, including a partial write.
+No running launch service is supplied. The specification (the `swarma-dispatcher`
+Unix-socket service on `dispatch/1` from slice 0; later queueing, events, long waits
+and integrations behind capability gates on the same core and transport) is
+[`spec/dispatcher.md`](spec/dispatcher.md); diagrams are in [`diagrams/`](diagrams/).
 
 The specification describes the full launch design. Current dependency subsets do not make it available: user-manager station v0 excludes launcher, general list, `effect.observe` and `exec.stop`, with operator-only per-act export-waiver retirement; broker standalone v0 uses a static operator UID allowlist without signed grants/delegation/revocation/bindings or dispatcher integration. An `active` station account is not launchable. The [minimal non-federated full protected-launch target](spec/dispatcher.md#21-full-protected-launch-target-and-dependency-gates) names the missing joins and owners; it does not select the immediate milestone. A proposed reduced launch/lease milestone using v0 credential leasing remains separately unavailable without an explicit owner-approved, jointly published and qualified limited caller launch-authority/currentness policy or real broker slice-0 grant/revocation integration. The policy remains unaccepted; full target grant/freshness/binding gates remain intact. Linux is first in work order; macOS parity requires native qualification before activation. No unqualified platform or standalone allowlist opens dispatcher admission.
 
@@ -107,7 +118,8 @@ It adds those `bin` directories to `PATH`, then runs these entrypoints:
   When neither exists, it explicitly reports **spec-only bootstrap**, with
   dispatcher build/vet/formatting/tests
   unrun. Installing Go to run CI tooling does not implement the dispatcher.
-- When a root `go.mod` exists, the same step runs, in order, under Bash with
+- The root `go.mod` declares Go `1.26.0` and uses only the standard library.
+  With that module present, the same step runs, in order, under Bash with
   `-e -o pipefail`:
 
   ```sh
@@ -122,12 +134,17 @@ It adds those `bin` directories to `PATH`, then runs these entrypoints:
   go test -v -p 1 -count=1 -timeout=20m ./...
   ```
 
-  Each error stops the step. A future module must use this pinned toolchain or
+  Each error stops the step. The module must use this pinned toolchain or
   deliberately update CI. The commands target the root module and active Linux
   build tags; nested modules, other platforms/tags, race detection, privileged
   account fixtures, runtime activation and integration qualification are outside
   this bootstrap's coverage. `go mod verify` checks downloaded module contents;
   it does not replace dependency policy or guarantee an unchanged `go.sum`.
+  Frame tests in `internal/frame/frame_test.go` cover wire bytes, length gates,
+  fragmented/truncated reads, writer failures and consecutive frame boundaries.
+  These checks require execution on the isolated Linux runner; implementation
+  and local formatting inspection alone are not passing build/vet/test evidence
+  or native service qualification. Results go to the hosted job output.
 - `python3 .scripts/test_linux_ci.py -v` qualifies the CI blocks using temporary,
   dependency-free Go modules, schema/workflow fixtures, and narrowing mutations.
   These are CI regression tests, not dispatcher implementation tests. Python
