@@ -36,7 +36,8 @@ components, repeated separators or trailing slash; `/` is not a principal direct
 | Server | `callers`, `connect_gid`, `endpoint_dev`, `endpoint_ino`, `service_gid`, `service_uid`, `v` | 16384 |
 | Client | `caller`, `connect_gid`, `endpoint_dev`, `endpoint_ino`, `service_gid`, `service_uid`, `v` | 4096 |
 
-`callers` is an ascending-by-UID array of 1..32 distinct principal objects; membership grants only the existing capacity-read role.
+`callers` is a strictly ascending-by-UID array of 1..32 principal objects, at most one per UID; membership grants only the existing capacity-read role.
+Each configuration byte cap is an independent limit: individually maximal entries need not fit together and oversize snapshots refuse.
 `caller` is one principal object for the invoking client, never the server allowlist. Server-only configuration is not required or disclosed to clients.
 The endpoint directory's device/inode are `endpoint_dev`/`endpoint_ino`. Its owner/group must equal `service_uid`/`service_gid`.
 Server real/effective UID/GID must equal `service_uid`/`service_gid`; the client's real/effective UID must equal `caller.uid`.
@@ -96,7 +97,9 @@ Unclean death (SIGKILL, crash, power loss) may leave the socket: only kernel loc
 supervisor automatic restart/restart loops or automatic stale removal. It is not §11 journal recovery or the full recovery-control service.
 Operator cleanup is a filesystem procedure, not a dispatcher operation: with the validated directory pin and stable verified lock file, acquire
 the same nonblocking exclusive flock; lock contention means refuse. Require independently recorded service-created socket device/inode
-and matching directory identity, from startup evidence or explicit operator inspection; recheck exact owner/GID/mode/type/device/inode immediately
+and matching directory identity, from startup evidence or explicit operator inspection. Require owner `service_uid`, socket type and recorded device/inode;
+the only allowed GID/mode states are pre-chgrp (`service_gid`, no mode bits outside `0600`), post-chgrp/pre-chmod (`connect_gid`, no mode bits outside `0600`),
+or published (`connect_gid`, exact `0660`). Any other owner/GID/mode/type refuses. Recheck these attributes and identity immediately
 before unlinking only that endpoint under the lock. A nonblocking connect probe with a non-resetting 2 s monotonic deadline under that lock must return `ECONNREFUSED`;
 successful connect means live (close without sending), and any other error is uncertainty: refuse cleanup. Recheck identity after the probe and before unlink.
 If identity is unknown/different, or the endpoint is live, refuse this procedure; no foreign deletion.
@@ -174,7 +177,7 @@ configuration has at most 32 pins. Failure closes and releases acquired slots; n
 Each connection has one payload buffer at most 131072 bytes, a separate 4-byte prefix, a 4096-byte ancillary buffer and a 512-byte outbound buffer
 including its prefix. Maximum specified response payload is 165 bytes (64-byte ID), wire 169. Release hello payload before reading operation.
 These explicit buffers total 135684 bytes/connection, 8683776 for 64; stacks, bounded records/config and kernel overhead are separate, not a total RSS promise.
-Set SO_RCVBUF and SO_SNDBUF request to 65536 on listener/client; verify on listener, client and accepted sockets. Refuse setup unless effective reported values are
+Set SO_RCVBUF and SO_SNDBUF request to 65536 on listener, client and every accepted socket before use; verify on each. Refuse setup unless effective reported values are
 positive and at most 131072 each (Linux doubling is included). No force-buffer options or kernel tuning. Kernel metadata/backlog are outside userspace
 buffer arithmetic; backlog parameter and reported socket-buffer limits are transport settings to qualify, not proof of total kernel-memory usage.
 
@@ -199,7 +202,7 @@ EOF/timeouts/slot exhaustion are not protocol error envelopes. Release all descr
 | Slots/buffers | 64th global, 8th UID; multiple UIDs within totals; 131076-byte wire framing | 65th global/9th UID closes before worker/body allocation, all partial-failure slots released; bounded reported socket buffers and no read-ahead |
 | Deadlines | Whole frames fit stages/session; EINTR/EAGAIN within remaining time | Partial prefix/body/slow drip/stalled write expire; individually fast stages exceeding total 5 s expire; no automatic client reconnect |
 | Endpoint/lock | Fresh protected socket; valid existing lock reused; clean normal restart | Symlink/alias/wrong mode/group, lock contention, stale/live endpoint, bind/chgrp/chmod failure/replacement: refuse without foreign unlink; bad preexisting lock/parent not repaired |
-| Crash/operator | Recorded exact residual identity removed under acquired verified lock | Held lock/live/foreign/unknown/replaced endpoint: cleanup refuses; SIGKILL residual cannot auto-restart; no lock-file deletion |
+| Crash/operator | Recorded exact residual identity in each of the three allowed GID/mode states removed under acquired verified lock and refused-connect probe, including bound-never-listening residuals | Held lock/live/foreign/unknown/replaced endpoint or other GID/mode: cleanup refuses; SIGKILL residual cannot auto-restart; no lock-file deletion |
 | Startup/shutdown | Post-bind failure cleans only own endpoint; SIGINT/SIGTERM once | Repeated signals idempotent; reader/writer wake and release within userspace budget; replacement untouched; cleanup failure reported, no false success |
 | Ancillary | Plain data, fresh per-receive controls | Rights on prefix/body, multiple rights, truncation, controls with EOF/error: close all delivered rights before discard; no leaks/carry-over or kernel-generating options |
 | Deployment/residual | Only std FDs at exec; runtime poller FDs retained; newly created listener | Inherited listener never adopted; no FD-number sweep; out-of-band connection handoff cannot be detected and is not claimed prevented |
