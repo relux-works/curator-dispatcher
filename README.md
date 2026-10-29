@@ -12,7 +12,8 @@ The one-shot executor is `curator-run` from `curator-agent-launcher`, in a versi
 **Status: design in progress; only a bounded byte-frame library is implemented.**
 [`internal/frame`](internal/frame/) reads and writes a four-byte unsigned
 big-endian length followed by 1–131072 payload bytes, per
-[§8.3](spec/dispatcher.md#83-socket-dispatch1). Empty frames are rejected before
+[§8.3](spec/dispatcher.md#83-socket-dispatch1) and the closed
+[byte-frame contract](spec/frame.md). Empty frames are rejected before
 payload allocation/read; nonempty bytes remain opaque. This I/O primitive does
 not validate JSON, CCJ-1 or object shape, authenticate callers, implement a daemon
 or launcher, or establish launch authority. A failed read returns no payload;

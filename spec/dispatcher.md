@@ -623,7 +623,7 @@ Workspace exports use the separate DRAFT `swarma-dispatcher workspace-result/1` 
 
 Companion figure: [service daemon and gated SH2+ backend](../diagrams/v1-daemon.puml).
 
-The daemon `swarma-dispatcher` runs as `swarma-dispatcher` and listens in `/opt/swarma/run/dispatcher/`. It uses the framing and connection rules of broker §4.1 and §13 with one declared difference: frames up to 128 KiB (§10). This is the service transport from slice 0, including the Curator CLI client. The broker rules include peer authentication, server-UID verification, protected endpoint/connection lifecycle and descriptor restrictions; descriptors are not a request transport. An absent daemon or authentication, permission, version or malformed-response failure refuses with no command fallback. Admission-unready is separate from control availability: after exclusive ownership, compatible schema, journal replay and valid authentication/indexes, the existing socket serves authorized recovery controls (§§7.1, 11). Forward readiness requires complete classification and safely bounded accounting; no alternate service or launch path is introduced. Later capabilities reuse this transport; queueing/events/long waits are omitted initially. After an ambiguous reply the client repeats the same request with the same `request_id` and signature.
+The daemon `swarma-dispatcher` runs as `swarma-dispatcher` and listens in `/opt/swarma/run/dispatcher/`. Its byte framing is defined completely in [the byte-frame contract](frame.md): a four-byte unsigned big-endian payload length, 1..131072 payload bytes inclusive (128 KiB), with a separate four-byte prefix and a 131076-byte maximum wire frame. Empty or over-limit payload lengths refuse before payload allocation/read; clean EOF and truncation are distinguished there. Broker §4.1 and §13 supply the additional connection rules; the dispatcher payload cap is 128 KiB (§10). This is the service transport from slice 0, including the Curator CLI client. The broker rules include peer authentication, server-UID verification, protected endpoint/connection lifecycle and descriptor restrictions; descriptors are not a request transport. An absent daemon or authentication, permission, version or malformed-response failure refuses with no command fallback. Admission-unready is separate from control availability: after exclusive ownership, compatible schema, journal replay and valid authentication/indexes, the existing socket serves authorized recovery controls (§§7.1, 11). Forward readiness requires complete classification and safely bounded accounting; no alternate service or launch path is introduced. Later capabilities reuse this transport; queueing/events/long waits are omitted initially. After an ambiguous reply the client repeats the same request with the same `request_id` and signature.
 
 | Operation class on the existing socket | During recovery / closed forward admission |
 |---|---|
@@ -674,7 +674,7 @@ The macOS reference is a sandbox profile for exec/files/network, per-user proces
 | decoded plan | 48 KiB |
 | plan in a request (base64) | 64 KiB |
 | launcher request `launch-op/1` | 80 KiB (helper §7) |
-| `dispatch/1` frame (all slices) | 128 KiB |
+| `dispatch/1` payload (all slices; four-byte prefix excluded) | 128 KiB (131072 bytes) |
 
 The bounded base archive and workspace-result transport/caps would need publication; the existing frame/plan budget does not imply that a base archive fits in a frame. No new transfer transport or numeric budget is invented (§16, question 22).
 
